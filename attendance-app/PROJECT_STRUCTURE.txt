@@ -1,0 +1,17 @@
+./.gitignore
+./PROJECT_STRUCTURE.txt
+./QUICKSTART.md
+./README.md
+./index.html
+./package.json
+./src/App.jsx
+./src/components/Login.jsx
+./src/components/Navbar.jsx
+./src/data/testData.js
+./src/main.jsx
+./src/pages/AdminDashboard.jsx
+./src/pages/StudentDashboard.jsx
+./src/pages/TeacherDashboard.jsx
+./src/styles/App.css
+./src/utils/helpers.js
+./vite.config.js
