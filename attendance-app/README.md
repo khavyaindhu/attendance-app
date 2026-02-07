@@ -4,6 +4,12 @@ A modern, responsive attendance management system for colleges with separate das
 
 ## ✨ Features
 
+### 🔐 **Authentication**
+- Login page with 3 user types (Student, Teacher, Admin)
+- Registration page for new users
+- Form validation (username length, password matching, etc.)
+- Toggle between Login and Register
+
 ### 👨‍🎓 Student Features
 - Login with credentials
 - View personal attendance statistics
@@ -104,9 +110,10 @@ The built files will be in the `dist` folder.
 
 ## 🎨 Features Breakdown
 
-### 1. User Login/Authentication
-- Three user types: Student, Teacher, Admin
-- Separate login flows
+### 1. User Authentication
+- **Login:** Three user types with separate login flows
+- **Registration:** New user registration with role-specific fields
+- **Validation:** Username (min 4 chars), Password (min 6 chars), password confirmation
 - Hardcoded test credentials (ready for backend integration)
 
 ### 2. Attendance Marking

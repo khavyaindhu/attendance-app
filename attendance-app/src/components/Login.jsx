@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { USERS } from '../data/testData';
 import { authenticateUser } from '../utils/helpers';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, onShowRegister }) => {
   const [userType, setUserType] = useState('students');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -78,6 +78,24 @@ const Login = ({ onLogin }) => {
           <button type="submit" className="login-btn">
             Login
           </button>
+
+          <div style={{ textAlign: 'center', marginTop: '15px' }}>
+            <button
+              type="button"
+              onClick={onShowRegister}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#667eea',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                textDecoration: 'underline'
+              }}
+            >
+              Don't have an account? Register here
+            </button>
+          </div>
         </form>
 
         <div className="test-credentials">
