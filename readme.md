@@ -1,1 +1,3 @@
-command to run the app: npm run dev
+command to run the app:
+npm install
+ npm run dev
