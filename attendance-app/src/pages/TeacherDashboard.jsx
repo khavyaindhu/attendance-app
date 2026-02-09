@@ -44,34 +44,48 @@ const TeacherDashboard = ({ user, onLogout }) => {
       
       <div className="dashboard-content">
         <div className="dashboard-header">
-          <h2>Teacher Dashboard</h2>
+          <h2>← Teacher Dashboard</h2>
           <p>Mark and view student attendance</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Total Records</h3>
-            <div className="stat-value">{totalRecords}</div>
+        {/* Today's Attendance Summary */}
+        <div className="table-container" style={{ marginBottom: '20px' }}>
+          <h3 style={{ marginBottom: '15px', color: '#212121' }}>Today's Attendance</h3>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <div style={{ 
+              flex: '1', 
+              minWidth: '120px',
+              background: '#E8F5E9', 
+              padding: '15px', 
+              borderRadius: '8px',
+              borderLeft: '4px solid #4CAF50'
+            }}>
+              <div style={{ fontSize: '12px', color: '#2E7D32', marginBottom: '5px' }}>Present</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4CAF50' }}>{presentCount}</div>
+            </div>
+            <div style={{ 
+              flex: '1', 
+              minWidth: '120px',
+              background: '#FFEBEE', 
+              padding: '15px', 
+              borderRadius: '8px',
+              borderLeft: '4px solid #F44336'
+            }}>
+              <div style={{ fontSize: '12px', color: '#C62828', marginBottom: '5px' }}>Absent</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#F44336' }}>{absentCount}</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <h3>Present</h3>
-            <div className="stat-value" style={{ color: '#28a745' }}>{presentCount}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Absent</h3>
-            <div className="stat-value" style={{ color: '#dc3545' }}>{absentCount}</div>
-          </div>
-          <div className="stat-card">
-            <h3>Avg Attendance</h3>
-            <div className="stat-value">{avgAttendance}%</div>
+          <div style={{ marginTop: '15px' }}>
+            <button className="btn btn-primary" style={{ width: '100%' }}>
+              📱 Scan QR Code
+            </button>
           </div>
         </div>
 
         {/* Mark Attendance Section */}
-        <div className="table-container" style={{ marginBottom: '30px' }}>
+        <div className="table-container" style={{ marginBottom: '25px' }}>
           <div className="table-header">
-            <h3>Mark Attendance</h3>
+            <h3>📝 Student List - Mark Attendance</h3>
             <div className="filters">
               <div className="filter-group">
                 <label>Class</label>
@@ -92,40 +106,38 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </div>
           </div>
 
-          <div className="attendance-grid">
+          <div style={{ marginTop: '20px' }}>
             {studentsInClass.map(student => (
-              <div key={student.id} className="student-card">
-                <h4>{student.name}</h4>
-                <p>Roll No: {student.rollNo}</p>
-                <div className="attendance-buttons">
-                  <button
-                    className="btn btn-success"
-                    style={{ 
-                      background: attendanceMarks[student.id] === 'Present' ? '#28a745' : '#e0e0e0',
-                      color: attendanceMarks[student.id] === 'Present' ? 'white' : '#666'
-                    }}
-                    onClick={() => handleMarkAttendance(student.id, 'Present')}
-                  >
-                    Present
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    style={{ 
-                      background: attendanceMarks[student.id] === 'Absent' ? '#dc3545' : '#e0e0e0',
-                      color: attendanceMarks[student.id] === 'Absent' ? 'white' : '#666'
-                    }}
-                    onClick={() => handleMarkAttendance(student.id, 'Absent')}
-                  >
-                    Absent
-                  </button>
-                </div>
+              <div key={student.id} className="checkbox-item">
+                <input 
+                  type="checkbox" 
+                  id={student.id}
+                  checked={attendanceMarks[student.id] === 'Present'}
+                  onChange={(e) => handleMarkAttendance(student.id, e.target.checked ? 'Present' : 'Absent')}
+                />
+                <label htmlFor={student.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span style={{ fontWeight: '500' }}>{student.name}</span>
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      background: attendanceMarks[student.id] === 'Present' ? '#E8F5E9' : '#FFEBEE',
+                      color: attendanceMarks[student.id] === 'Present' ? '#2E7D32' : '#C62828'
+                    }}>
+                      {attendanceMarks[student.id] === 'Present' ? '✓ Present' : '✗ Absent'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#757575' }}>Roll No: {student.rollNo}</div>
+                </label>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <button className="btn btn-primary" onClick={handleSaveAttendance}>
-              Save Attendance
+          <div style={{ marginTop: '20px' }}>
+            <button className="btn btn-warning" onClick={handleSaveAttendance} style={{ width: '100%' }}>
+              💾 Mark Attendance
             </button>
           </div>
         </div>
@@ -133,10 +145,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
         {/* Attendance Records */}
         <div className="table-container">
           <div className="table-header">
-            <h3>Attendance Records - {selectedClass}</h3>
+            <h3>📊 Attendance Records - {selectedClass}</h3>
             <div className="table-actions">
               <button className="btn btn-success" onClick={handleExport}>
-                Export to Excel
+                📊 Export to Excel
               </button>
             </div>
           </div>
@@ -160,7 +172,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <td>{record.date}</td>
                   <td>
                     <span className={`status-badge ${record.status === 'Present' ? 'status-present' : 'status-absent'}`}>
-                      {record.status}
+                      {record.status === 'Present' ? '✓ ' : '✗ '}{record.status}
                     </span>
                   </td>
                   <td>{record.checkIn}</td>

@@ -48,8 +48,38 @@ const AdminDashboard = ({ user, onLogout }) => {
       
       <div className="dashboard-content">
         <div className="dashboard-header">
-          <h2>Admin Dashboard</h2>
+          <h2>← Admin Panel</h2>
           <p>View comprehensive attendance reports and analytics</p>
+        </div>
+
+        {/* Action Cards */}
+        <div className="action-cards">
+          <div className="action-card">
+            <div className="action-card-icon">👥</div>
+            <h3>Manage Students</h3>
+          </div>
+          <div className="action-card" style={{ background: '#FF9800' }}>
+            <div className="action-card-icon">👨‍🏫</div>
+            <h3>Manage Teachers</h3>
+          </div>
+          <div className="action-card" style={{ background: '#4CAF50' }}>
+            <div className="action-card-icon">📊</div>
+            <h3>Attendance Reports</h3>
+          </div>
+          <div className="action-card" style={{ background: '#9C27B0' }}>
+            <div className="action-card-icon">📈</div>
+            <h3>Analytics</h3>
+          </div>
+        </div>
+
+        {/* Export Buttons */}
+        <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
+          <button className="btn btn-warning" onClick={handleExportPDF} style={{ flex: '1', minWidth: '200px' }}>
+            📄 Export to PDF
+          </button>
+          <button className="btn btn-success" onClick={handleExport} style={{ flex: '1', minWidth: '200px' }}>
+            📊 Export to Excel
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -58,23 +88,23 @@ const AdminDashboard = ({ user, onLogout }) => {
             <h3>Total Students</h3>
             <div className="stat-value">{totalStudents}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ borderLeftColor: '#FF9800' }}>
             <h3>Total Records</h3>
-            <div className="stat-value">{totalRecords}</div>
+            <div className="stat-value" style={{ color: '#FF9800' }}>{totalRecords}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ borderLeftColor: '#4CAF50' }}>
             <h3>Present</h3>
-            <div className="stat-value" style={{ color: '#28a745' }}>{presentCount}</div>
+            <div className="stat-value" style={{ color: '#4CAF50' }}>{presentCount}</div>
           </div>
-          <div className="stat-card">
-            <h3>Overall Attendance</h3>
+          <div className="stat-card" style={{ borderLeftColor: '#1976D2' }}>
+            <h3>Overall %</h3>
             <div className="stat-value">{overallAttendance}%</div>
           </div>
         </div>
 
         {/* Class-wise Statistics */}
-        <div className="table-container" style={{ marginBottom: '30px' }}>
-          <h3 style={{ marginBottom: '20px' }}>Class-wise Attendance</h3>
+        <div className="table-container" style={{ marginBottom: '25px' }}>
+          <h3 style={{ marginBottom: '20px', color: '#212121' }}>📚 Class-wise Attendance</h3>
           <div className="stats-grid">
             {CLASSES.map(cls => {
               const classRecords = ATTENDANCE_DATA.filter(r => r.class === cls);
@@ -84,10 +114,14 @@ const AdminDashboard = ({ user, onLogout }) => {
                 : 0;
               
               return (
-                <div key={cls} className="stat-card">
+                <div key={cls} className="stat-card" style={{ 
+                  borderLeftColor: classPercentage >= 75 ? '#4CAF50' : '#F44336' 
+                }}>
                   <h3>{cls}</h3>
-                  <div className="stat-value">{classPercentage}%</div>
-                  <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                  <div className="stat-value" style={{ 
+                    color: classPercentage >= 75 ? '#4CAF50' : '#F44336' 
+                  }}>{classPercentage}%</div>
+                  <p style={{ fontSize: '12px', color: '#757575', marginTop: '5px' }}>
                     {classPresent}/{classRecords.length} Present
                   </p>
                 </div>
@@ -99,19 +133,11 @@ const AdminDashboard = ({ user, onLogout }) => {
         {/* Attendance Records with Filters */}
         <div className="table-container">
           <div className="table-header">
-            <h3>Attendance Records</h3>
-            <div className="table-actions">
-              <button className="btn btn-success" onClick={handleExport}>
-                📊 Export to Excel
-              </button>
-              <button className="btn btn-danger" onClick={handleExportPDF}>
-                📄 Export to PDF
-              </button>
-            </div>
+            <h3>📋 Attendance Records</h3>
           </div>
 
           {/* Filters */}
-          <div className="filters">
+          <div className="filters" style={{ marginTop: '15px' }}>
             <div className="filter-group">
               <label>Class</label>
               <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
@@ -161,13 +187,20 @@ const AdminDashboard = ({ user, onLogout }) => {
                 filteredData.map((record) => (
                   <tr key={record.id}>
                     <td>{record.id}</td>
-                    <td>{record.rollNo}</td>
+                    <td><strong>{record.rollNo}</strong></td>
                     <td>{record.studentName}</td>
-                    <td>{record.class}</td>
+                    <td><span style={{ 
+                      background: '#E3F2FD', 
+                      padding: '4px 8px', 
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#1976D2'
+                    }}>{record.class}</span></td>
                     <td>{record.date}</td>
                     <td>
                       <span className={`status-badge ${record.status === 'Present' ? 'status-present' : 'status-absent'}`}>
-                        {record.status}
+                        {record.status === 'Present' ? '✓ ' : '✗ '}{record.status}
                       </span>
                     </td>
                     <td>{record.checkIn}</td>
@@ -176,8 +209,9 @@ const AdminDashboard = ({ user, onLogout }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>
-                    No records found matching the filters
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#757575' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '10px' }}>📭</div>
+                    <div>No records found matching the filters</div>
                   </td>
                 </tr>
               )}
@@ -185,8 +219,16 @@ const AdminDashboard = ({ user, onLogout }) => {
           </table>
 
           {filteredData.length > 0 && (
-            <div style={{ marginTop: '15px', color: '#666', fontSize: '14px' }}>
-              Showing {filteredData.length} record(s)
+            <div style={{ 
+              marginTop: '15px', 
+              padding: '12px',
+              background: '#E3F2FD',
+              borderRadius: '4px',
+              color: '#1976D2', 
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
+              📊 Showing {filteredData.length} record(s)
             </div>
           )}
         </div>
