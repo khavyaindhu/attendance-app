@@ -22,91 +22,232 @@ const Login = ({ onLogin, onShowRegister }) => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <div className="login-header">
-          <h1>📚 Online Attendance App</h1>
-          <p>Login to manage attendance</p>
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #1976D2 0%, #1565C0 60%, #0D47A1 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '420px',
+        background: 'white',
+        borderRadius: '20px 20px 0 0',
+        overflow: 'hidden',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+      }}>
+        {/* Header */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+          color: 'white',
+          padding: '25px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <span style={{ fontSize: '28px' }}>📚</span>
+          </div>
+          <h1 style={{ 
+            margin: 0, 
+            fontSize: '20px', 
+            fontWeight: '600'
+          }}>
+            Online Attendance App
+          </h1>
         </div>
 
-        <div className="user-type-selector">
+        {/* Tab Navigation */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '2px solid #E0E0E0',
+          background: 'white'
+        }}>
           <button
-            className={`user-type-btn ${userType === 'students' ? 'active' : ''}`}
             onClick={() => setUserType('students')}
+            style={{
+              flex: 1,
+              padding: '15px',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: userType === 'students' ? '3px solid #1976D2' : '3px solid transparent',
+              color: userType === 'students' ? '#1976D2' : '#757575',
+              fontSize: '15px',
+              fontWeight: userType === 'students' ? '600' : '500',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
           >
             Login
           </button>
           <button
-            className={`user-type-btn ${userType === 'teachers' ? 'active' : ''}`}
             onClick={() => setUserType('teachers')}
+            style={{
+              flex: 1,
+              padding: '15px',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: userType === 'teachers' ? '3px solid #1976D2' : '3px solid transparent',
+              color: userType === 'teachers' ? '#1976D2' : '#757575',
+              fontSize: '15px',
+              fontWeight: userType === 'teachers' ? '600' : '500',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
           >
             Teacher
           </button>
           <button
-            className={`user-type-btn ${userType === 'admin' ? 'active' : ''}`}
             onClick={() => setUserType('admin')}
+            style={{
+              flex: 1,
+              padding: '15px',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: userType === 'admin' ? '3px solid #1976D2' : '3px solid transparent',
+              color: userType === 'admin' ? '#1976D2' : '#757575',
+              fontSize: '15px',
+              fontWeight: userType === 'admin' ? '600' : '500',
+              cursor: 'pointer',
+              transition: 'all 0.3s'
+            }}
           >
             Admin
           </button>
         </div>
 
-        <div className="login-form-content">
+        {/* Form Content */}
+        <div style={{ padding: '30px 25px' }}>
           <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label>📧 Email</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your email"
-                required
-              />
+            {/* Email Input */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '14px 16px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '8px',
+                background: '#FAFAFA'
+              }}>
+                <span style={{ fontSize: '20px', color: '#1976D2' }}>📧</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Email"
+                  required
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '15px',
+                    color: '#424242'
+                  }}
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label>🔒 Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
+            {/* Password Input */}
+            <div style={{ marginBottom: '25px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '14px 16px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '8px',
+                background: '#FAFAFA'
+              }}>
+                <span style={{ fontSize: '20px', color: '#1976D2' }}>🔒</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '15px',
+                    color: '#424242'
+                  }}
+                />
+              </div>
             </div>
 
             {error && (
               <div style={{ 
-                padding: '10px', 
+                padding: '12px', 
                 background: '#FFEBEE', 
                 color: '#C62828', 
-                borderRadius: '4px',
-                marginBottom: '15px',
+                borderRadius: '8px',
+                marginBottom: '20px',
                 fontSize: '14px',
                 borderLeft: '4px solid #C62828'
               }}>
-                {error}
+                ⚠️ {error}
               </div>
             )}
 
-            <button type="submit" className="login-btn">
+            {/* Login Button */}
+            <button 
+              type="submit" 
+              style={{
+                width: '100%',
+                background: '#FFC107',
+                color: '#000',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(255, 193, 7, 0.3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '15px'
+              }}
+            >
               Login
             </button>
 
-            <div style={{ textAlign: 'center', marginTop: '15px' }}>
+            {/* Forgot Password */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <a
                 href="#"
                 style={{
                   color: '#1976D2',
                   fontSize: '14px',
                   textDecoration: 'none',
-                  fontWeight: '500'
+                  fontWeight: '600'
                 }}
               >
                 Forgot Password?
               </a>
             </div>
 
-            <div style={{ textAlign: 'center', marginTop: '15px' }}>
+            {/* Register Link */}
+            <div style={{ 
+              textAlign: 'center', 
+              paddingTop: '15px',
+              borderTop: '1px solid #E0E0E0'
+            }}>
+              <span style={{ color: '#757575', fontSize: '14px' }}>
+                Don't have an account?{' '}
+              </span>
               <button
                 type="button"
                 onClick={onShowRegister}
@@ -116,36 +257,76 @@ const Login = ({ onLogin, onShowRegister }) => {
                   color: '#1976D2',
                   cursor: 'pointer',
                   fontSize: '14px',
-                  fontWeight: '500',
-                  textDecoration: 'underline'
+                  fontWeight: '600',
+                  textDecoration: 'none'
                 }}
               >
-                Don't have an account? Register here
+                Register here
               </button>
             </div>
           </form>
 
-          <div className="test-credentials">
-            <h4>🔑 Test Credentials:</h4>
+          {/* Test Credentials */}
+          <div style={{
+            marginTop: '25px',
+            padding: '15px',
+            background: '#E3F2FD',
+            borderRadius: '8px',
+            borderLeft: '4px solid #1976D2'
+          }}>
+            <h4 style={{ 
+              margin: '0 0 10px 0', 
+              fontSize: '14px', 
+              color: '#1565C0',
+              fontWeight: '600'
+            }}>
+              🔑 Test Credentials:
+            </h4>
             {userType === 'students' && (
-              <>
-                <p><strong>Username:</strong> student1</p>
-                <p><strong>Password:</strong> student123</p>
-              </>
+              <div style={{ fontSize: '13px', color: '#424242' }}>
+                <p style={{ margin: '5px 0' }}><strong>Username:</strong> student1</p>
+                <p style={{ margin: '5px 0' }}><strong>Password:</strong> student123</p>
+              </div>
             )}
             {userType === 'teachers' && (
-              <>
-                <p><strong>Username:</strong> teacher1</p>
-                <p><strong>Password:</strong> teacher123</p>
-              </>
+              <div style={{ fontSize: '13px', color: '#424242' }}>
+                <p style={{ margin: '5px 0' }}><strong>Username:</strong> teacher1</p>
+                <p style={{ margin: '5px 0' }}><strong>Password:</strong> teacher123</p>
+              </div>
             )}
             {userType === 'admin' && (
-              <>
-                <p><strong>Username:</strong> admin</p>
-                <p><strong>Password:</strong> admin123</p>
-              </>
+              <div style={{ fontSize: '13px', color: '#424242' }}>
+                <p style={{ margin: '5px 0' }}><strong>Username:</strong> admin</p>
+                <p style={{ margin: '5px 0' }}><strong>Password:</strong> admin123</p>
+              </div>
             )}
           </div>
+        </div>
+
+        {/* Blue Wave Bottom */}
+        <div style={{
+          height: '80px',
+          background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+          marginTop: '20px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <svg 
+            style={{
+              position: 'absolute',
+              top: '-2px',
+              left: 0,
+              width: '100%',
+              height: '40px'
+            }}
+            viewBox="0 0 1440 120" 
+            preserveAspectRatio="none"
+          >
+            <path 
+              d="M0,60 C240,100 480,20 720,60 C960,100 1200,20 1440,60 L1440,120 L0,120 Z" 
+              fill="white"
+            />
+          </svg>
         </div>
       </div>
     </div>
