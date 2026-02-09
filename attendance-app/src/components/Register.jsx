@@ -5,6 +5,7 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
   const [userType, setUserType] = useState('students');
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     password: '',
     confirmPassword: '',
     name: '',
@@ -27,12 +28,22 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
     setError('');
   };
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleRegister = (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     // Validation
+    if (!validateEmail(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -52,6 +63,7 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
     let newUser = {
       id: `${userType === 'students' ? 'S' : userType === 'teachers' ? 'T' : 'A'}${Date.now()}`,
       username: formData.username,
+      email: formData.email,
       password: formData.password,
       name: formData.name
     };
@@ -72,6 +84,7 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
     // Clear form
     setFormData({
       username: '',
+      email: '',
       password: '',
       confirmPassword: '',
       name: '',
@@ -239,6 +252,46 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Enter your full name"
+                  required
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '15px',
+                    color: '#424242'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontSize: '14px',
+                color: '#424242',
+                fontWeight: '500'
+              }}>
+                Email Address *
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '14px 16px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '8px',
+                background: '#FAFAFA'
+              }}>
+                <span style={{ fontSize: '18px' }}>📧</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email address"
                   required
                   style={{
                     flex: 1,
@@ -637,6 +690,7 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
               📌 Registration Info:
             </h4>
             <div style={{ fontSize: '12px', color: '#424242', lineHeight: '1.6' }}>
+              • Valid email address is required<br />
               • Username must be at least 4 characters<br />
               • Password must be at least 6 characters<br />
               • All fields marked with * are required<br />
