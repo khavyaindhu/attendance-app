@@ -33,26 +33,219 @@ const StudentDashboard = ({ user, onLogout }) => {
       <Navbar user={user} onLogout={onLogout} />
       
       <div className="dashboard-content">
-        <div className="dashboard-header">
-          <h2>← Student Dashboard</h2>
-          <p>View your attendance and mark check-in/check-out</p>
+        {/* Today's Status - Simple text format */}
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '16px', color: '#424242', fontWeight: '500' }}>
+            Today's Status: <span style={{ color: '#4CAF50', fontWeight: '600' }}>Present</span>
+          </h3>
         </div>
 
-        {/* Today's Status Card */}
-        <div className="status-card" style={{ marginBottom: '20px' }}>
-          <div>
-            <h3>Today's Status:</h3>
-          </div>
-          <div className="status-value" style={{ 
-            color: checkInTime && checkOutTime ? '#4CAF50' : '#FF9800',
-            fontSize: '18px'
+        {/* Attendance Report Card - Blue Header */}
+        <div className="table-container" style={{ marginBottom: '25px', padding: '0', overflow: 'hidden' }}>
+          <div style={{ 
+            background: '#1976D2', 
+            color: 'white', 
+            padding: '15px 20px',
+            fontWeight: '600',
+            fontSize: '16px'
           }}>
-            {checkInTime && checkOutTime ? '✓ Present' : checkInTime ? '⏱ Checked In' : 'Not Marked'}
+            Attendance Report
+          </div>
+          
+          <div style={{ 
+            background: 'white', 
+            padding: '30px 20px',
+          }}>
+            {/* Bar Chart */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'flex-end',
+              height: '180px',
+              marginBottom: '10px',
+              position: 'relative',
+              paddingLeft: '20px'
+            }}>
+              {/* Y-axis markers */}
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                fontSize: '10px',
+                color: '#999'
+              }}>
+                <div>5</div>
+                <div>4</div>
+                <div>3</div>
+                <div>2</div>
+                <div>1</div>
+                <div>0</div>
+              </div>
+
+              {/* Bars */}
+              {[
+                { month: 'Jan', height: 80, color: '#4CAF50', percentage: '80%' },
+                { month: 'Feb', height: 75, color: '#1976D2', percentage: '75%' },
+                { month: 'Mar', height: 60, color: '#F44336', percentage: '60%' },
+                { month: 'Apr', height: 85, color: '#4CAF50', percentage: '85%' },
+                { month: 'May', height: 90, color: '#1976D2', percentage: '90%' }
+              ].map((item, idx) => (
+                <div key={item.month} style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}>
+                  {/* Percentage above bar */}
+                  <div style={{ 
+                    position: 'absolute',
+                    top: `${100 - item.height}%`,
+                    transform: 'translateY(-20px)',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: '#1976D2'
+                  }}>
+                    {item.percentage}
+                  </div>
+                  
+                  {/* Bar */}
+                  <div style={{
+                    width: '50px',
+                    height: `${item.height}%`,
+                    background: item.color,
+                    borderRadius: '4px 4px 0 0',
+                    marginBottom: '8px',
+                    marginTop: 'auto'
+                  }}></div>
+                  
+                  {/* Month label */}
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#616161',
+                    fontWeight: '500'
+                  }}>
+                    {item.month}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
+        {/* Notifications Section */}
+        <div style={{ marginBottom: '25px' }}>
+          <h3 style={{ 
+            marginBottom: '15px', 
+            color: '#424242', 
+            fontSize: '18px',
+            fontWeight: '600'
+          }}>
+            Notifications
+          </h3>
+          
+          {/* Notification Cards with Yellow Circle Icons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{
+              background: 'white',
+              padding: '15px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: '#FFC107',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ color: 'white', fontSize: '14px', fontWeight: '700' }}>!</span>
+              </div>
+              <p style={{ 
+                margin: 0, 
+                color: '#424242',
+                fontSize: '14px'
+              }}>
+                Absent on 12th April.
+              </p>
+            </div>
+
+            <div style={{
+              background: 'white',
+              padding: '15px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: '#FFC107',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <span style={{ color: 'white', fontSize: '14px', fontWeight: '700' }}>!</span>
+              </div>
+              <p style={{ 
+                margin: 0, 
+                color: '#424242',
+                fontSize: '14px'
+              }}>
+                Low Attendance Alert.
+              </p>
+            </div>
+
+            {!checkInTime && (
+              <div style={{
+                background: 'white',
+                padding: '15px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: '#FFC107',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <span style={{ color: 'white', fontSize: '14px', fontWeight: '700' }}>!</span>
+                </div>
+                <p style={{ 
+                  margin: 0, 
+                  color: '#424242',
+                  fontSize: '14px'
+                }}>
+                  Don't forget to check in for today!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="stats-grid" style={{ marginBottom: '25px' }}>
           <div className="stat-card">
             <h3>Total Days</h3>
             <div className="stat-value">{totalDays}</div>
@@ -68,47 +261,6 @@ const StudentDashboard = ({ user, onLogout }) => {
           <div className="stat-card" style={{ borderLeftColor: '#FF9800' }}>
             <h3>Attendance %</h3>
             <div className="stat-value" style={{ color: '#FF9800' }}>{attendancePercentage}%</div>
-          </div>
-        </div>
-
-        {/* Attendance Report Card */}
-        <div className="table-container" style={{ marginBottom: '20px' }}>
-          <h3 style={{ marginBottom: '15px', color: '#1976D2' }}>📊 Attendance Report</h3>
-          <div style={{ 
-            background: '#E3F2FD', 
-            padding: '20px', 
-            borderRadius: '8px',
-            textAlign: 'center' 
-          }}>
-            <p style={{ color: '#1976D2', fontSize: '14px', marginBottom: '10px' }}>
-              Monthly Attendance Trend
-            </p>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-around', 
-              alignItems: 'flex-end',
-              height: '120px',
-              marginTop: '20px'
-            }}>
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May'].map((month, idx) => {
-                const heights = [80, 75, 60, 85, 90];
-                return (
-                  <div key={month} style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: '40px',
-                      height: `${heights[idx]}%`,
-                      background: idx % 2 === 0 ? '#4CAF50' : '#1976D2',
-                      borderRadius: '4px 4px 0 0',
-                      marginBottom: '5px'
-                    }}></div>
-                    <div style={{ fontSize: '11px', color: '#616161' }}>{month}</div>
-                    <div style={{ fontSize: '10px', color: '#1976D2', fontWeight: '600' }}>
-                      {heights[idx]}%
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
 
@@ -151,29 +303,6 @@ const StudentDashboard = ({ user, onLogout }) => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Notifications */}
-        <div style={{ marginBottom: '25px' }}>
-          <h3 style={{ marginBottom: '15px', color: '#212121', fontSize: '18px' }}>🔔 Notifications</h3>
-          {absentDays > 2 && (
-            <div className="notification-card">
-              <div className="icon">⚠️</div>
-              <p>Low Attendance Alert: You have been absent {absentDays} days</p>
-            </div>
-          )}
-          {attendancePercentage < 75 && (
-            <div className="notification-card" style={{ background: '#FFEBEE', borderLeftColor: '#F44336' }}>
-              <div className="icon" style={{ color: '#F44336' }}>⛔</div>
-              <p>Attendance below 75%. Please maintain regular attendance.</p>
-            </div>
-          )}
-          {!checkInTime && (
-            <div className="notification-card" style={{ background: '#E3F2FD', borderLeftColor: '#1976D2' }}>
-              <div className="icon" style={{ color: '#1976D2' }}>📌</div>
-              <p>Don't forget to check in for today!</p>
-            </div>
-          )}
         </div>
 
         {/* Attendance History */}
