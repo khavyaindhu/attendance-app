@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CLASSES } from '../data/testData';
+import { registerUser, initializeStorage } from '../utils/localStorageService';
 
 const Register = ({ onBackToLogin, onRegisterSuccess }) => {
   const [userType, setUserType] = useState('students');
@@ -19,6 +20,11 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Initialize localStorage on component mount
+  useEffect(() => {
+    initializeStorage();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -69,40 +75,54 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
     };
 
     if (userType === 'students') {
+      if (!formData.rollNo) {
+        setError('Roll number is required');
+        return;
+      }
       newUser.class = formData.class;
       newUser.rollNo = formData.rollNo;
     } else if (userType === 'teachers') {
+      if (!formData.department) {
+        setError('Department is required');
+        return;
+      }
       newUser.department = formData.department;
     } else if (userType === 'admin') {
       newUser.role = formData.role;
     }
 
-    // Simulate registration success
-    console.log('New user registered:', newUser);
-    setSuccess('Registration successful! You can now login.');
+    // Register user using localStorage service
+    const result = registerUser(userType, newUser);
     
-    // Clear form
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      name: '',
-      class: 'CS-A',
-      rollNo: '',
-      department: '',
-      role: 'Admin'
-    });
+    if (result.success) {
+      console.log('New user registered:', newUser);
+      setSuccess('Registration successful! Redirecting to login...');
+      
+      // Clear form
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        name: '',
+        class: 'CS-A',
+        rollNo: '',
+        department: '',
+        role: 'Admin'
+      });
 
-    // Callback to notify parent
-    if (onRegisterSuccess) {
-      onRegisterSuccess(newUser);
+      // Callback to notify parent
+      if (onRegisterSuccess) {
+        onRegisterSuccess(newUser);
+      }
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        onBackToLogin();
+      }, 2000);
+    } else {
+      setError(result.message);
     }
-
-    // Redirect to login after 2 seconds
-    setTimeout(() => {
-      onBackToLogin();
-    }, 2000);
   };
 
   return (
@@ -694,7 +714,7 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
               • Username must be at least 4 characters<br />
               • Password must be at least 6 characters<br />
               • All fields marked with * are required<br />
-              • Data will be stored temporarily (no backend)
+              • Data stored locally in your browser
             </div>
           </div>
         </div>

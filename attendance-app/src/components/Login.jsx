@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { USERS } from '../data/testData';
-import { authenticateUser } from '../utils/helpers';
+import { useState, useEffect } from 'react';
+import { authenticateUser, saveCurrentUser, initializeStorage } from '../utils/localStorageService';
 
 const Login = ({ onLogin, onShowRegister }) => {
   const [userType, setUserType] = useState('students');
@@ -8,16 +7,26 @@ const Login = ({ onLogin, onShowRegister }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  // Initialize localStorage on component mount
+  useEffect(() => {
+    initializeStorage();
+  }, []);
+
   const handleLogin = (e) => {
     e.preventDefault();
     setError('');
 
-    const user = authenticateUser(username, password, userType, USERS);
+    // Authenticate user from localStorage
+    const result = authenticateUser(username, password, userType);
     
-    if (user) {
-      onLogin({ ...user, userType });
+    if (result.success) {
+      // Save current user session
+      saveCurrentUser(result.user, userType);
+      
+      // Pass user data to parent component
+      onLogin({ ...result.user, userType });
     } else {
-      setError('Invalid username or password');
+      setError(result.message || 'Invalid username or password');
     }
   };
 
@@ -87,7 +96,7 @@ const Login = ({ onLogin, onShowRegister }) => {
               transition: 'all 0.3s'
             }}
           >
-            Login
+            Student
           </button>
           <button
             onClick={() => setUserType('teachers')}
@@ -128,7 +137,7 @@ const Login = ({ onLogin, onShowRegister }) => {
         {/* Form Content */}
         <div style={{ padding: '30px 25px' }}>
           <form onSubmit={handleLogin}>
-            {/* Email Input */}
+            {/* Username Input */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{
                 display: 'flex',
@@ -139,12 +148,12 @@ const Login = ({ onLogin, onShowRegister }) => {
                 borderRadius: '8px',
                 background: '#FAFAFA'
               }}>
-                <span style={{ fontSize: '20px', color: '#1976D2' }}>📧</span>
+                <span style={{ fontSize: '20px', color: '#1976D2' }}>👤</span>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Email"
+                  placeholder="Username"
                   required
                   style={{
                     flex: 1,
@@ -280,24 +289,33 @@ const Login = ({ onLogin, onShowRegister }) => {
               color: '#1565C0',
               fontWeight: '600'
             }}>
-              🔑 Test Credentials:
+              🔑 Default Test Credentials:
             </h4>
             {userType === 'students' && (
               <div style={{ fontSize: '13px', color: '#424242' }}>
                 <p style={{ margin: '5px 0' }}><strong>Username:</strong> student1</p>
                 <p style={{ margin: '5px 0' }}><strong>Password:</strong> student123</p>
+                <p style={{ margin: '5px 0', fontSize: '12px', fontStyle: 'italic' }}>
+                  Or register to create your own account!
+                </p>
               </div>
             )}
             {userType === 'teachers' && (
               <div style={{ fontSize: '13px', color: '#424242' }}>
                 <p style={{ margin: '5px 0' }}><strong>Username:</strong> teacher1</p>
                 <p style={{ margin: '5px 0' }}><strong>Password:</strong> teacher123</p>
+                <p style={{ margin: '5px 0', fontSize: '12px', fontStyle: 'italic' }}>
+                  Or register to create your own account!
+                </p>
               </div>
             )}
             {userType === 'admin' && (
               <div style={{ fontSize: '13px', color: '#424242' }}>
                 <p style={{ margin: '5px 0' }}><strong>Username:</strong> admin</p>
                 <p style={{ margin: '5px 0' }}><strong>Password:</strong> admin123</p>
+                <p style={{ margin: '5px 0', fontSize: '12px', fontStyle: 'italic' }}>
+                  Or register to create your own account!
+                </p>
               </div>
             )}
           </div>

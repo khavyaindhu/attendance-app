@@ -1,25 +1,65 @@
-import { useState } from 'react';
-import Navbar from '../components/Navbar';
-import { ATTENDANCE_DATA, USERS, CLASSES } from '../data/testData';
-import { exportToCSV } from '../utils/helpers';
+import { useState, useEffect } from 'react';
+import { 
+  getStudentsByClass, 
+  markClassAttendance,
+  getClassStats,
+  getTodayCheckIns,
+  initializeAttendanceSystem,
+  getTodayDate,
+  getAllAttendanceRecords
+} from '../utils/attendanceStorageService';
+import { CLASSES } from '../data/testData';
 
 const TeacherDashboard = ({ user, onLogout }) => {
   const [selectedClass, setSelectedClass] = useState('CS-A');
   const [attendanceMarks, setAttendanceMarks] = useState({});
+  const [studentsInClass, setStudentsInClass] = useState([]);
+  const [classStats, setClassStats] = useState({ presentCount: 0, absentCount: 0 });
+  const [todayCheckIns, setTodayCheckIns] = useState({});
 
-  // Get students for selected class
-  const studentsInClass = USERS.students.filter(s => s.class === selectedClass);
-
-  // Initialize attendance marks for students
-  useState(() => {
-    const initialMarks = {};
-    studentsInClass.forEach(student => {
-      initialMarks[student.id] = 'Present'; // Default all to Present
-    });
-    setAttendanceMarks(initialMarks);
+  // Initialize and load data
+  useEffect(() => {
+    initializeAttendanceSystem();
+    loadClassData();
   }, [selectedClass]);
 
-  // Calculate counts
+  const loadClassData = () => {
+    // Get students from the selected class (including newly registered ones)
+    const students = getStudentsByClass(selectedClass);
+    setStudentsInClass(students);
+    
+    // Get today's check-ins
+    const checkIns = getTodayCheckIns();
+    setTodayCheckIns(checkIns);
+    
+    // Get today's already saved attendance records
+    const today = getTodayDate();
+    const allRecords = getAllAttendanceRecords();
+    const todayRecords = allRecords.filter(r => r.date === today && r.class === selectedClass);
+    
+    // Initialize attendance marks
+    const initialMarks = {};
+    students.forEach(student => {
+      // First check if attendance was already marked today
+      const existingRecord = todayRecords.find(r => r.studentId === student.id);
+      
+      if (existingRecord) {
+        // Use the saved attendance status
+        initialMarks[student.id] = existingRecord.status;
+      } else {
+        // Check if student has checked in today
+        const hasCheckedIn = checkIns[student.id]?.checkIn;
+        initialMarks[student.id] = hasCheckedIn ? 'Present' : 'Absent'; // Default based on check-in
+      }
+    });
+    setAttendanceMarks(initialMarks);
+    
+    // Get class statistics
+    const stats = getClassStats(selectedClass);
+    setClassStats(stats);
+  };
+
+  // Calculate counts based on current marks
   const presentCount = Object.values(attendanceMarks).filter(status => status === 'Present').length;
   const absentCount = studentsInClass.length - presentCount;
 
@@ -31,8 +71,21 @@ const TeacherDashboard = ({ user, onLogout }) => {
   };
 
   const handleSaveAttendance = () => {
-    alert('Attendance saved successfully! (This would save to backend)');
-    console.log('Attendance marks:', attendanceMarks);
+    const result = markClassAttendance(selectedClass, attendanceMarks);
+    
+    if (result.success) {
+      alert('✓ Attendance saved successfully!');
+      // Don't reload - keep the current state
+      // Just update the stats
+      const stats = getClassStats(selectedClass);
+      setClassStats(stats);
+    } else {
+      alert('Error saving attendance. Please try again.');
+    }
+  };
+
+  const handleClassChange = (newClass) => {
+    setSelectedClass(newClass);
   };
 
   return (
@@ -82,7 +135,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             fontWeight: '600',
             color: '#212121' 
           }}>
-            Today's Attendance
+            Today's Attendance - {selectedClass}
           </h3>
           
           <div style={{ 
@@ -152,7 +205,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             fontWeight: '600',
             color: '#212121' 
           }}>
-            Student List
+            Student List ({studentsInClass.length} students)
           </h3>
 
           <div style={{ marginBottom: '15px' }}>
@@ -167,7 +220,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
             </label>
             <select 
               value={selectedClass} 
-              onChange={(e) => setSelectedClass(e.target.value)}
+              onChange={(e) => handleClassChange(e.target.value)}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -185,276 +238,141 @@ const TeacherDashboard = ({ user, onLogout }) => {
 
           {/* Student Checkboxes */}
           <div style={{ marginBottom: '15px' }}>
-            {studentsInClass.map(student => (
-              <div 
-                key={student.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  borderBottom: '1px solid #f0f0f0',
-                  cursor: 'pointer'
-                }}
-                onClick={() => handleMarkAttendance(
-                  student.id, 
-                  attendanceMarks[student.id] === 'Present' ? 'Absent' : 'Present'
-                )}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={attendanceMarks[student.id] === 'Present'}
-                    onChange={() => {}}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      cursor: 'pointer',
-                      accentColor: '#4CAF50'
-                    }}
-                  />
-                  <span style={{ 
-                    fontSize: '15px', 
-                    fontWeight: '500',
-                    color: '#212121'
-                  }}>
-                    {student.name}
-                  </span>
-                </div>
-
-                <span style={{ 
-                  padding: '4px 12px', 
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  background: attendanceMarks[student.id] === 'Present' ? '#E8F5E9' : '#FFEBEE',
-                  color: attendanceMarks[student.id] === 'Present' ? '#2E7D32' : '#C62828',
-                  border: attendanceMarks[student.id] === 'Present' ? '1px solid #4CAF50' : '1px solid #F44336'
-                }}>
-                  {attendanceMarks[student.id] === 'Present' ? '✓ Present' : '✗ Absent'}
-                </span>
+            {studentsInClass.length === 0 ? (
+              <div style={{
+                padding: '30px',
+                textAlign: 'center',
+                color: '#757575',
+                fontSize: '14px'
+              }}>
+                No students registered in this class yet.
               </div>
-            ))}
+            ) : (
+              studentsInClass.map(student => {
+                const hasCheckedIn = todayCheckIns[student.id]?.checkIn;
+                
+                return (
+                  <div 
+                    key={student.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px',
+                      borderBottom: '1px solid #f0f0f0',
+                      cursor: 'pointer',
+                      background: hasCheckedIn ? '#E8F5E9' : 'transparent'
+                    }}
+                    onClick={() => handleMarkAttendance(
+                      student.id, 
+                      attendanceMarks[student.id] === 'Present' ? 'Absent' : 'Present'
+                    )}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={attendanceMarks[student.id] === 'Present'}
+                        onChange={() => {}}
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          cursor: 'pointer',
+                          accentColor: '#4CAF50'
+                        }}
+                      />
+                      <div>
+                        <span style={{ 
+                          fontSize: '15px', 
+                          fontWeight: '500',
+                          color: '#212121',
+                          display: 'block'
+                        }}>
+                          {student.name}
+                        </span>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          color: '#757575' 
+                        }}>
+                          Roll: {student.rollNo}
+                          {hasCheckedIn && (
+                            <span style={{ 
+                              marginLeft: '8px',
+                              color: '#4CAF50',
+                              fontWeight: '600'
+                            }}>
+                              • Checked in at {todayCheckIns[student.id].checkIn}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      background: attendanceMarks[student.id] === 'Present' ? '#E8F5E9' : '#FFEBEE',
+                      color: attendanceMarks[student.id] === 'Present' ? '#2E7D32' : '#C62828',
+                      border: attendanceMarks[student.id] === 'Present' ? '1px solid #4CAF50' : '1px solid #F44336'
+                    }}>
+                      {attendanceMarks[student.id] === 'Present' ? '✓ Present' : '✗ Absent'}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* Mark Attendance Button */}
         <button 
           onClick={handleSaveAttendance}
+          disabled={studentsInClass.length === 0}
           style={{
             width: '100%',
-            background: '#FFC107',
-            color: '#000',
+            background: studentsInClass.length === 0 ? '#E0E0E0' : '#FFC107',
+            color: studentsInClass.length === 0 ? '#9E9E9E' : '#000',
             border: 'none',
             borderRadius: '8px',
             padding: '16px',
             fontSize: '16px',
             fontWeight: '700',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            cursor: studentsInClass.length === 0 ? 'not-allowed' : 'pointer',
+            boxShadow: studentsInClass.length === 0 ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}
         >
-          Mark Attendance
+          💾 Save Attendance
         </button>
+
+        {/* Info Card */}
+        <div style={{
+          marginTop: '20px',
+          padding: '15px',
+          background: '#E3F2FD',
+          borderRadius: '8px',
+          borderLeft: '4px solid #1976D2'
+        }}>
+          <h4 style={{ 
+            margin: '0 0 8px 0', 
+            fontSize: '14px', 
+            color: '#1565C0',
+            fontWeight: '600'
+          }}>
+            ℹ️ Info:
+          </h4>
+          <div style={{ fontSize: '12px', color: '#424242', lineHeight: '1.6' }}>
+            • Students with green highlight have checked in today<br />
+            • Click on any student to toggle attendance<br />
+            • New registrations appear automatically<br />
+            • Attendance is saved to local storage
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default TeacherDashboard;
-
-
-
-
-// import { useState } from 'react';
-// import Navbar from '../components/Navbar';
-// import { ATTENDANCE_DATA, USERS, CLASSES } from '../data/testData';
-// import { exportToCSV } from '../utils/helpers';
-
-// const TeacherDashboard = ({ user, onLogout }) => {
-//   const [selectedClass, setSelectedClass] = useState('CS-A');
-//   const [selectedDate, setSelectedDate] = useState('2024-02-01');
-//   const [attendanceMarks, setAttendanceMarks] = useState({});
-
-//   // Get students for selected class
-//   const studentsInClass = USERS.students.filter(s => s.class === selectedClass);
-
-//   // Filter attendance data
-//   const filteredAttendance = ATTENDANCE_DATA.filter(
-//     record => record.class === selectedClass
-//   );
-
-//   // Calculate stats
-//   const totalRecords = filteredAttendance.length;
-//   const presentCount = filteredAttendance.filter(r => r.status === 'Present').length;
-//   const absentCount = totalRecords - presentCount;
-//   const avgAttendance = totalRecords > 0 ? ((presentCount / totalRecords) * 100).toFixed(1) : 0;
-
-//   const handleMarkAttendance = (studentId, status) => {
-//     setAttendanceMarks(prev => ({
-//       ...prev,
-//       [studentId]: status
-//     }));
-//   };
-
-//   const handleSaveAttendance = () => {
-//     alert('Attendance saved successfully! (This would save to backend)');
-//     console.log('Attendance marks:', attendanceMarks);
-//   };
-
-//   const handleExport = () => {
-//     exportToCSV(filteredAttendance, `attendance_${selectedClass}_${new Date().toISOString().split('T')[0]}.csv`);
-//   };
-
-//   return (
-//     <div className="dashboard">
-//       <Navbar user={user} onLogout={onLogout} />
-      
-//       <div className="dashboard-content">
-//         {/* <div className="dashboard-header">
-//           <h2>← Teacher Dashboard</h2>
-//           <p>Mark and view student attendance</p>
-//         </div> */}
-
-//         {/* Today's Attendance Summary */}
-//         <div className="table-container" style={{ marginBottom: '20px' }}>
-//           <h3 style={{ marginBottom: '15px', color: '#212121' }}>Today's Attendance</h3>
-//           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-//             <div style={{ 
-//               flex: '1', 
-//               minWidth: '120px',
-//               background: '#E8F5E9', 
-//               padding: '15px', 
-//               borderRadius: '8px',
-//               borderLeft: '4px solid #4CAF50'
-//             }}>
-//               <div style={{ fontSize: '12px', color: '#2E7D32', marginBottom: '5px' }}>Present</div>
-//               <div style={{ fontSize: '24px', fontWeight: '700', color: '#4CAF50' }}>{presentCount}</div>
-//             </div>
-//             <div style={{ 
-//               flex: '1', 
-//               minWidth: '120px',
-//               background: '#FFEBEE', 
-//               padding: '15px', 
-//               borderRadius: '8px',
-//               borderLeft: '4px solid #F44336'
-//             }}>
-//               <div style={{ fontSize: '12px', color: '#C62828', marginBottom: '5px' }}>Absent</div>
-//               <div style={{ fontSize: '24px', fontWeight: '700', color: '#F44336' }}>{absentCount}</div>
-//             </div>
-//           </div>
-//           <div style={{ marginTop: '15px' }}>
-//             <button className="btn btn-primary" style={{ width: '100%' }}>
-//               📱 Scan QR Code
-//             </button>
-//           </div>
-//         </div>
-
-//         {/* Mark Attendance Section */}
-//         <div className="table-container" style={{ marginBottom: '25px' }}>
-//           <div className="table-header">
-//             <h3>📝 Student List - Mark Attendance</h3>
-//             <div className="filters">
-//               <div className="filter-group">
-//                 <label>Class</label>
-//                 <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
-//                   {CLASSES.map(cls => (
-//                     <option key={cls} value={cls}>{cls}</option>
-//                   ))}
-//                 </select>
-//               </div>
-//               <div className="filter-group">
-//                 <label>Date</label>
-//                 <input 
-//                   type="date" 
-//                   value={selectedDate}
-//                   onChange={(e) => setSelectedDate(e.target.value)}
-//                 />
-//               </div>
-//             </div>
-//           </div>
-
-//           <div style={{ marginTop: '20px' }}>
-//             {studentsInClass.map(student => (
-//               <div key={student.id} className="checkbox-item">
-//                 <input 
-//                   type="checkbox" 
-//                   id={student.id}
-//                   checked={attendanceMarks[student.id] === 'Present'}
-//                   onChange={(e) => handleMarkAttendance(student.id, e.target.checked ? 'Present' : 'Absent')}
-//                 />
-//                 <label htmlFor={student.id}>
-//                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-//                     <span style={{ fontWeight: '500' }}>{student.name}</span>
-//                     <span style={{ 
-//                       padding: '4px 10px', 
-//                       borderRadius: '4px',
-//                       fontSize: '11px',
-//                       fontWeight: '600',
-//                       background: attendanceMarks[student.id] === 'Present' ? '#E8F5E9' : '#FFEBEE',
-//                       color: attendanceMarks[student.id] === 'Present' ? '#2E7D32' : '#C62828'
-//                     }}>
-//                       {attendanceMarks[student.id] === 'Present' ? '✓ Present' : '✗ Absent'}
-//                     </span>
-//                   </div>
-//                   <div style={{ fontSize: '12px', color: '#757575' }}>Roll No: {student.rollNo}</div>
-//                 </label>
-//               </div>
-//             ))}
-//           </div>
-
-//           <div style={{ marginTop: '20px' }}>
-//             <button className="btn btn-warning" onClick={handleSaveAttendance} style={{ width: '100%' }}>
-//               💾 Mark Attendance
-//             </button>
-//           </div>
-//         </div>
-
-//         {/* Attendance Records */}
-//         <div className="table-container">
-//           <div className="table-header">
-//             <h3>📊 Attendance Records - {selectedClass}</h3>
-//             <div className="table-actions">
-//               <button className="btn btn-success" onClick={handleExport}>
-//                 📊 Export to Excel
-//               </button>
-//             </div>
-//           </div>
-
-//           <table>
-//             <thead>
-//               <tr>
-//                 <th>Roll No</th>
-//                 <th>Student Name</th>
-//                 <th>Date</th>
-//                 <th>Status</th>
-//                 <th>Check In</th>
-//                 <th>Check Out</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {filteredAttendance.map((record) => (
-//                 <tr key={record.id}>
-//                   <td>{record.rollNo}</td>
-//                   <td>{record.studentName}</td>
-//                   <td>{record.date}</td>
-//                   <td>
-//                     <span className={`status-badge ${record.status === 'Present' ? 'status-present' : 'status-absent'}`}>
-//                       {record.status === 'Present' ? '✓ ' : '✗ '}{record.status}
-//                     </span>
-//                   </td>
-//                   <td>{record.checkIn}</td>
-//                   <td>{record.checkOut}</td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default TeacherDashboard;
