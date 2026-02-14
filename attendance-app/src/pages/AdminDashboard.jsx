@@ -5,7 +5,8 @@ import {
   getAllStudents,
   initializeAttendanceSystem
 } from '../utils/attendanceStorageService';
-import { getAllUsers } from '../utils/localStorageService';
+import { getAllUsers, registerUser, updateUser, deleteUser } from '../utils/localStorageService';
+import { CLASSES } from '../data/testData';
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [stats, setStats] = useState({
@@ -16,6 +17,11 @@ const AdminDashboard = ({ user, onLogout }) => {
   });
   const [modalData, setModalData] = useState(null);
   const [modalType, setModalType] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [currentEditItem, setCurrentEditItem] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [formError, setFormError] = useState('');
+  const [generatedCredentials, setGeneratedCredentials] = useState(null);
 
   useEffect(() => {
     initializeAttendanceSystem();
@@ -32,6 +38,281 @@ const AdminDashboard = ({ user, onLogout }) => {
       totalAdmins: allUsers.admin?.length || 0,
       totalAttendanceRecords: attendanceRecords.length
     });
+  };
+
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      email: '',
+      password: '',
+      name: '',
+      class: 'CS-A',
+      rollNo: '',
+      department: '',
+      role: 'Admin'
+    });
+    setFormError('');
+    setEditMode(false);
+    setCurrentEditItem(null);
+    setGeneratedCredentials(null);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+    setFormError('');
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const handleAddStudent = () => {
+    const autoPassword = generatePassword();
+    setFormData({
+      username: '',
+      email: '',
+      password: autoPassword,
+      name: '',
+      class: 'CS-A',
+      rollNo: ''
+    });
+    setModalType('add-student');
+    setEditMode(false);
+    setGeneratedCredentials(null);
+  };
+
+  const handleEditStudent = (student) => {
+    setCurrentEditItem(student);
+    setFormData({
+      username: student.username,
+      email: student.email,
+      password: student.password,
+      name: student.name,
+      class: student.class,
+      rollNo: student.rollNo
+    });
+    setModalType('add-student');
+    setEditMode(true);
+    setGeneratedCredentials(null);
+  };
+
+  const handleDeleteStudent = (studentId) => {
+    if (window.confirm('Are you sure you want to delete this student?')) {
+      const result = deleteUser('students', studentId);
+      if (result.success) {
+        loadStats();
+        // Refresh the modal data if it's open
+        if (modalType === 'students') {
+          const students = getAllStudents();
+          setModalData(students);
+        }
+        alert('✓ Student deleted successfully!');
+      } else {
+        alert('❌ Failed to delete student: ' + result.message);
+      }
+    }
+  };
+
+  const handleSaveStudent = (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    // Validation
+    if (!validateEmail(formData.email)) {
+      setFormError('Please enter a valid email address');
+      return;
+    }
+
+    if (!editMode && formData.password.length < 6) {
+      setFormError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (formData.username.length < 4) {
+      setFormError('Username must be at least 4 characters');
+      return;
+    }
+
+    if (!formData.rollNo) {
+      setFormError('Roll number is required');
+      return;
+    }
+
+    if (editMode) {
+      // Update existing student
+      const updatedStudent = {
+        ...currentEditItem,
+        username: formData.username,
+        email: formData.email,
+        name: formData.name,
+        class: formData.class,
+        rollNo: formData.rollNo
+      };
+
+      const result = updateUser('students', currentEditItem.id, updatedStudent);
+      
+      if (result.success) {
+        alert('✓ Student updated successfully!');
+        loadStats();
+        closeModal();
+      } else {
+        setFormError(result.message);
+      }
+    } else {
+      // Add new student
+      const newStudent = {
+        id: `S${Date.now()}`,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        class: formData.class,
+        rollNo: formData.rollNo
+      };
+
+      const result = registerUser('students', newStudent);
+      
+      if (result.success) {
+        setGeneratedCredentials({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          userType: 'Student'
+        });
+        loadStats();
+      } else {
+        setFormError(result.message);
+      }
+    }
+  };
+
+  const handleAddTeacher = () => {
+    const autoPassword = generatePassword();
+    setFormData({
+      username: '',
+      email: '',
+      password: autoPassword,
+      name: '',
+      department: ''
+    });
+    setModalType('add-teacher');
+    setEditMode(false);
+    setGeneratedCredentials(null);
+  };
+
+  const handleEditTeacher = (teacher) => {
+    setCurrentEditItem(teacher);
+    setFormData({
+      username: teacher.username,
+      email: teacher.email,
+      password: teacher.password,
+      name: teacher.name,
+      department: teacher.department
+    });
+    setModalType('add-teacher');
+    setEditMode(true);
+    setGeneratedCredentials(null);
+  };
+
+  const handleDeleteTeacher = (teacherId) => {
+    if (window.confirm('Are you sure you want to delete this teacher?')) {
+      const result = deleteUser('teachers', teacherId);
+      if (result.success) {
+        loadStats();
+        // Refresh the modal data if it's open
+        if (modalType === 'teachers') {
+          const allUsers = getAllUsers();
+          setModalData(allUsers.teachers || []);
+        }
+        alert('✓ Teacher deleted successfully!');
+      } else {
+        alert('❌ Failed to delete teacher: ' + result.message);
+      }
+    }
+  };
+
+  const handleSaveTeacher = (e) => {
+    e.preventDefault();
+    setFormError('');
+
+    // Validation
+    if (!validateEmail(formData.email)) {
+      setFormError('Please enter a valid email address');
+      return;
+    }
+
+    if (!editMode && formData.password.length < 6) {
+      setFormError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (formData.username.length < 4) {
+      setFormError('Username must be at least 4 characters');
+      return;
+    }
+
+    if (!formData.department) {
+      setFormError('Department is required');
+      return;
+    }
+
+    if (editMode) {
+      // Update existing teacher
+      const updatedTeacher = {
+        ...currentEditItem,
+        username: formData.username,
+        email: formData.email,
+        name: formData.name,
+        department: formData.department
+      };
+
+      const result = updateUser('teachers', currentEditItem.id, updatedTeacher);
+      
+      if (result.success) {
+        alert('✓ Teacher updated successfully!');
+        loadStats();
+        closeModal();
+      } else {
+        setFormError(result.message);
+      }
+    } else {
+      // Add new teacher
+      const newTeacher = {
+        id: `T${Date.now()}`,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        department: formData.department
+      };
+
+      const result = registerUser('teachers', newTeacher);
+      
+      if (result.success) {
+        setGeneratedCredentials({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          userType: 'Teacher'
+        });
+        loadStats();
+      } else {
+        setFormError(result.message);
+      }
+    }
   };
 
   const handleExport = () => {
@@ -111,6 +392,20 @@ const AdminDashboard = ({ user, onLogout }) => {
   const closeModal = () => {
     setModalData(null);
     setModalType(null);
+    resetForm();
+  };
+
+  const copyCredentials = () => {
+    const text = `Login Credentials for ${generatedCredentials.userType}:
+Username: ${generatedCredentials.username}
+Email: ${generatedCredentials.email}
+Password: ${generatedCredentials.password}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      alert('✓ Credentials copied to clipboard!');
+    }).catch(() => {
+      alert('Failed to copy. Please copy manually.');
+    });
   };
 
   return (
@@ -345,17 +640,17 @@ const AdminDashboard = ({ user, onLogout }) => {
             ℹ️ Admin Features:
           </h4>
           <div style={{ fontSize: '12px', color: '#424242', lineHeight: '1.6' }}>
-            • View all registered users (students, teachers, admins)<br />
+            • Add, edit, and delete students & teachers<br />
+            • View all registered users<br />
             • Export attendance data to CSV/Excel<br />
             • View comprehensive analytics<br />
-            • All data stored in browser's localStorage<br />
-            • Data persists across sessions
+            • All data stored in browser's localStorage
           </div>
         </div>
       </div>
 
       {/* Modal Overlay */}
-      {modalData && (
+      {(modalData || modalType === 'add-student' || modalType === 'add-teacher') && (
         <div 
           style={{
             position: 'fixed',
@@ -368,7 +663,8 @@ const AdminDashboard = ({ user, onLogout }) => {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px'
+            padding: '20px',
+            overflowY: 'auto'
           }}
           onClick={closeModal}
         >
@@ -378,11 +674,12 @@ const AdminDashboard = ({ user, onLogout }) => {
               borderRadius: '12px',
               maxWidth: '600px',
               width: '100%',
-              maxHeight: '80vh',
+              maxHeight: '90vh',
               overflow: 'hidden',
               boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              margin: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -400,6 +697,8 @@ const AdminDashboard = ({ user, onLogout }) => {
                 {modalType === 'teachers' && '👨‍🏫 Teacher Management'}
                 {modalType === 'reports' && '📊 Attendance Reports'}
                 {modalType === 'analytics' && '📈 Analytics Dashboard'}
+                {modalType === 'add-student' && (editMode ? '✏️ Edit Student' : '➕ Add New Student')}
+                {modalType === 'add-teacher' && (editMode ? '✏️ Edit Teacher' : '➕ Add New Teacher')}
               </h3>
               <button
                 onClick={closeModal}
@@ -424,6 +723,739 @@ const AdminDashboard = ({ user, onLogout }) => {
               overflowY: 'auto',
               flex: 1
             }}>
+              {/* Add/Edit Student Form */}
+              {modalType === 'add-student' && !generatedCredentials && (
+                <form onSubmit={handleSaveStudent}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Full Name *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>👤</span>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        placeholder="Enter student's full name"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Email Address *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>📧</span>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="Enter email address"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Username *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>👨‍💼</span>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Choose a username (min 4 characters)"
+                        required
+                        disabled={editMode}
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242',
+                          opacity: editMode ? 0.6 : 1
+                        }}
+                      />
+                    </div>
+                    {editMode && (
+                      <div style={{ fontSize: '12px', color: '#757575', marginTop: '5px' }}>
+                        Username cannot be changed
+                      </div>
+                    )}
+                  </div>
+
+                  {!editMode && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                        Password * (Auto-generated)
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '14px 16px',
+                        border: '1px solid #E0E0E0',
+                        borderRadius: '8px',
+                        background: '#FFF3E0'
+                      }}>
+                        <span style={{ fontSize: '18px' }}>🔒</span>
+                        <input
+                          type="text"
+                          name="password"
+                          value={formData.password}
+                          readOnly
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            fontSize: '15px',
+                            color: '#424242',
+                            fontWeight: '600'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, password: generatePassword() })}
+                          style={{
+                            background: '#FF9800',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Regenerate
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Class *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>🏫</span>
+                      <select
+                        name="class"
+                        value={formData.class}
+                        onChange={handleChange}
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      >
+                        {CLASSES.map(cls => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Roll Number *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>🔢</span>
+                      <input
+                        type="text"
+                        name="rollNo"
+                        value={formData.rollNo}
+                        onChange={handleChange}
+                        placeholder="Enter roll number"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {formError && (
+                    <div style={{ 
+                      padding: '12px', 
+                      background: '#FFEBEE', 
+                      color: '#C62828', 
+                      borderRadius: '8px',
+                      marginBottom: '15px',
+                      fontSize: '14px',
+                      borderLeft: '4px solid #C62828'
+                    }}>
+                      ⚠️ {formError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      type="submit" 
+                      style={{
+                        flex: 1,
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {editMode ? 'Update Student' : 'Create Student'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={closeModal}
+                      style={{
+                        flex: 1,
+                        background: '#757575',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Credentials Display */}
+              {modalType === 'add-student' && generatedCredentials && (
+                <div>
+                  <div style={{
+                    background: '#E8F5E9',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    marginBottom: '20px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>✅</div>
+                    <h3 style={{ margin: '0 0 10px 0', color: '#2E7D32', fontSize: '18px' }}>
+                      Student Created Successfully!
+                    </h3>
+                    <p style={{ margin: 0, color: '#424242', fontSize: '14px' }}>
+                      Share these credentials with the student
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: '#F5F5F5',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Username</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#424242' }}>
+                        {generatedCredentials.username}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Email</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#424242' }}>
+                        {generatedCredentials.email}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Password</div>
+                      <div style={{ 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#1976D2',
+                        fontFamily: 'monospace',
+                        background: '#E3F2FD',
+                        padding: '10px',
+                        borderRadius: '6px'
+                      }}>
+                        {generatedCredentials.password}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      onClick={copyCredentials}
+                      style={{
+                        flex: 1,
+                        background: '#1976D2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      📋 Copy Credentials
+                    </button>
+                    <button 
+                      onClick={closeModal}
+                      style={{
+                        flex: 1,
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Done
+                    </button>
+                  </div>
+
+                  <div style={{
+                    marginTop: '15px',
+                    padding: '12px',
+                    background: '#FFF3E0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: '#E65100',
+                    borderLeft: '4px solid #FF9800'
+                  }}>
+                    ⚠️ Make sure to save these credentials! The student will need them to login.
+                  </div>
+                </div>
+              )}
+
+              {/* Add/Edit Teacher Form */}
+              {modalType === 'add-teacher' && !generatedCredentials && (
+                <form onSubmit={handleSaveTeacher}>
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Full Name *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>👤</span>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        placeholder="Enter teacher's full name"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Email Address *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>📧</span>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="Enter email address"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Username *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>👨‍💼</span>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Choose a username (min 4 characters)"
+                        required
+                        disabled={editMode}
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242',
+                          opacity: editMode ? 0.6 : 1
+                        }}
+                      />
+                    </div>
+                    {editMode && (
+                      <div style={{ fontSize: '12px', color: '#757575', marginTop: '5px' }}>
+                        Username cannot be changed
+                      </div>
+                    )}
+                  </div>
+
+                  {!editMode && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                        Password * (Auto-generated)
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '14px 16px',
+                        border: '1px solid #E0E0E0',
+                        borderRadius: '8px',
+                        background: '#FFF3E0'
+                      }}>
+                        <span style={{ fontSize: '18px' }}>🔒</span>
+                        <input
+                          type="text"
+                          name="password"
+                          value={formData.password}
+                          readOnly
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            background: 'transparent',
+                            outline: 'none',
+                            fontSize: '15px',
+                            color: '#424242',
+                            fontWeight: '600'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, password: generatePassword() })}
+                          style={{
+                            background: '#FF9800',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Regenerate
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#424242', fontWeight: '500' }}>
+                      Department *
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #E0E0E0',
+                      borderRadius: '8px',
+                      background: '#FAFAFA'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>🏢</span>
+                      <input
+                        type="text"
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        placeholder="Enter department"
+                        required
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          outline: 'none',
+                          fontSize: '15px',
+                          color: '#424242'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {formError && (
+                    <div style={{ 
+                      padding: '12px', 
+                      background: '#FFEBEE', 
+                      color: '#C62828', 
+                      borderRadius: '8px',
+                      marginBottom: '15px',
+                      fontSize: '14px',
+                      borderLeft: '4px solid #C62828'
+                    }}>
+                      ⚠️ {formError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      type="submit" 
+                      style={{
+                        flex: 1,
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {editMode ? 'Update Teacher' : 'Create Teacher'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={closeModal}
+                      style={{
+                        flex: 1,
+                        background: '#757575',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Teacher Credentials Display */}
+              {modalType === 'add-teacher' && generatedCredentials && (
+                <div>
+                  <div style={{
+                    background: '#E8F5E9',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    marginBottom: '20px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>✅</div>
+                    <h3 style={{ margin: '0 0 10px 0', color: '#2E7D32', fontSize: '18px' }}>
+                      Teacher Created Successfully!
+                    </h3>
+                    <p style={{ margin: 0, color: '#424242', fontSize: '14px' }}>
+                      Share these credentials with the teacher
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: '#F5F5F5',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Username</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#424242' }}>
+                        {generatedCredentials.username}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '15px' }}>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Email</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', color: '#424242' }}>
+                        {generatedCredentials.email}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#757575', marginBottom: '5px' }}>Password</div>
+                      <div style={{ 
+                        fontSize: '18px', 
+                        fontWeight: '700', 
+                        color: '#1976D2',
+                        fontFamily: 'monospace',
+                        background: '#E3F2FD',
+                        padding: '10px',
+                        borderRadius: '6px'
+                      }}>
+                        {generatedCredentials.password}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      onClick={copyCredentials}
+                      style={{
+                        flex: 1,
+                        background: '#1976D2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      📋 Copy Credentials
+                    </button>
+                    <button 
+                      onClick={closeModal}
+                      style={{
+                        flex: 1,
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '14px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Done
+                    </button>
+                  </div>
+
+                  <div style={{
+                    marginTop: '15px',
+                    padding: '12px',
+                    background: '#FFF3E0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: '#E65100',
+                    borderLeft: '4px solid #FF9800'
+                  }}>
+                    ⚠️ Make sure to save these credentials! The teacher will need them to login.
+                  </div>
+                </div>
+              )}
+
               {/* Students Modal */}
               {modalType === 'students' && (
                 <div>
@@ -433,9 +1465,30 @@ const AdminDashboard = ({ user, onLogout }) => {
                     borderRadius: '8px',
                     marginBottom: '15px',
                     fontSize: '14px',
-                    color: '#1565C0'
+                    color: '#1565C0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    Total Students: <strong>{modalData.length}</strong>
+                    <span>Total Students: <strong>{modalData.length}</strong></span>
+                    <button
+                      onClick={handleAddStudent}
+                      style={{
+                        background: '#1976D2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      ➕ Add Student
+                    </button>
                   </div>
 
                   {modalData.length === 0 ? (
@@ -451,6 +1504,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Email</th>
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Class</th>
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Roll No</th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -471,6 +1525,38 @@ const AdminDashboard = ({ user, onLogout }) => {
                                 </span>
                               </td>
                               <td style={{ padding: '12px', fontSize: '14px', color: '#424242' }}>{student.rollNo}</td>
+                              <td style={{ padding: '12px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    onClick={() => handleEditStudent(student)}
+                                    style={{
+                                      background: '#FF9800',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '6px 10px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStudent(student.id)}
+                                    style={{
+                                      background: '#F44336',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '6px 10px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -489,9 +1575,30 @@ const AdminDashboard = ({ user, onLogout }) => {
                     borderRadius: '8px',
                     marginBottom: '15px',
                     fontSize: '14px',
-                    color: '#2E7D32'
+                    color: '#2E7D32',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    Total Teachers: <strong>{modalData.length}</strong>
+                    <span>Total Teachers: <strong>{modalData.length}</strong></span>
+                    <button
+                      onClick={handleAddTeacher}
+                      style={{
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      ➕ Add Teacher
+                    </button>
                   </div>
 
                   {modalData.length === 0 ? (
@@ -506,6 +1613,7 @@ const AdminDashboard = ({ user, onLogout }) => {
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Name</th>
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Email</th>
                             <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Department</th>
+                            <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', color: '#616161', fontWeight: '600', borderBottom: '2px solid #E0E0E0' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -524,6 +1632,38 @@ const AdminDashboard = ({ user, onLogout }) => {
                                 }}>
                                   {teacher.department}
                                 </span>
+                              </td>
+                              <td style={{ padding: '12px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                    onClick={() => handleEditTeacher(teacher)}
+                                    style={{
+                                      background: '#FF9800',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '6px 10px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTeacher(teacher.id)}
+                                    style={{
+                                      background: '#F44336',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '6px 10px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -727,29 +1867,31 @@ const AdminDashboard = ({ user, onLogout }) => {
             </div>
 
             {/* Modal Footer */}
-            <div style={{
-              padding: '15px 20px',
-              borderTop: '1px solid #E0E0E0',
-              background: '#FAFAFA',
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: '#1976D2',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
-            </div>
+            {modalType !== 'add-student' && modalType !== 'add-teacher' && (
+              <div style={{
+                padding: '15px 20px',
+                borderTop: '1px solid #E0E0E0',
+                background: '#FAFAFA',
+                display: 'flex',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={closeModal}
+                  style={{
+                    background: '#1976D2',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

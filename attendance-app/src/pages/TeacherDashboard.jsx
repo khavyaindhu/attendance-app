@@ -167,7 +167,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
               <div style={{ fontSize: '24px', fontWeight: '700' }}>{absentCount}</div>
             </div>
           </div>
-
+{/* 
           <button 
             style={{
               width: '100%',
@@ -188,7 +188,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
           >
             <span style={{ fontSize: '20px' }}>📱</span>
             Scan QR Code
-          </button>
+          </button> */}
         </div>
 
         {/* Student List */}
