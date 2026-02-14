@@ -16,7 +16,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'  # Changed from 18 to 22
+        node-version: '22'
     
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -32,14 +32,14 @@ jobs:
     - name: Install dependencies
       run: npm install
     
-    - name: Install Capacitor CLI
-      run: npm install -g @capacitor/cli
+    - name: Install Capacitor Android
+      run: npm install @capacitor/android
     
     - name: Build React app
       run: npm run build
     
     - name: Add Android platform
-      run: npx cap add android || echo "Android platform already exists"
+      run: npx cap add android
     
     - name: Sync Capacitor
       run: npx cap sync android
