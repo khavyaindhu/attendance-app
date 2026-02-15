@@ -1,321 +1,240 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // Attendance Storage Service
-// Manages attendance records, check-in/check-out, and student registrations
+// Handles all localStorage operations for attendance data
+// ─────────────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEYS = {
-  USERS: 'attendance_app_users',
-  CURRENT_USER: 'attendance_app_current_user',
-  ATTENDANCE_RECORDS: 'attendance_app_records',
-  DAILY_CHECKINS: 'attendance_app_daily_checkins'
-};
+const ATTENDANCE_KEY = 'attendance_records';
 
-// Initialize attendance storage
-export const initializeAttendanceStorage = () => {
-  const existingRecords = localStorage.getItem(STORAGE_KEYS.ATTENDANCE_RECORDS);
-  const existingCheckins = localStorage.getItem(STORAGE_KEYS.DAILY_CHECKINS);
-  
-  if (!existingRecords) {
-    // Initialize with some sample data
-    const initialRecords = [
-      {
-        id: 'ATT001',
-        studentId: 'S001',
-        studentName: 'John Doe',
-        rollNo: '001',
-        class: 'CS-A',
-        date: '2024-02-01',
-        status: 'Present',
-        checkIn: '09:00 AM',
-        checkOut: '05:00 PM'
-      },
-      {
-        id: 'ATT002',
-        studentId: 'S001',
-        studentName: 'John Doe',
-        rollNo: '001',
-        class: 'CS-A',
-        date: '2024-02-02',
-        status: 'Absent',
-        checkIn: '-',
-        checkOut: '-'
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.ATTENDANCE_RECORDS, JSON.stringify(initialRecords));
-  }
-  
-  if (!existingCheckins) {
-    localStorage.setItem(STORAGE_KEYS.DAILY_CHECKINS, JSON.stringify({}));
-  }
-};
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-// Get all attendance records
-export const getAllAttendanceRecords = () => {
-  const records = localStorage.getItem(STORAGE_KEYS.ATTENDANCE_RECORDS);
-  return records ? JSON.parse(records) : [];
-};
-
-// Get attendance records for a specific student
-export const getStudentAttendance = (studentId) => {
-  const allRecords = getAllAttendanceRecords();
-  return allRecords.filter(record => record.studentId === studentId);
-};
-
-// Get attendance records for a specific class
-export const getClassAttendance = (className) => {
-  const allRecords = getAllAttendanceRecords();
-  return allRecords.filter(record => record.class === className);
-};
-
-// Get today's date in YYYY-MM-DD format
+/** Returns today's date as "YYYY-MM-DD" */
 export const getTodayDate = () => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 };
 
-// Get daily check-ins for today
-export const getTodayCheckIns = () => {
-  const checkIns = localStorage.getItem(STORAGE_KEYS.DAILY_CHECKINS);
-  const allCheckIns = checkIns ? JSON.parse(checkIns) : {};
-  const today = getTodayDate();
-  return allCheckIns[today] || {};
+/** Returns current time as "HH:MM" */
+export const getCurrentTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-// Save daily check-ins
-const saveDailyCheckIns = (date, checkIns) => {
-  const allCheckIns = localStorage.getItem(STORAGE_KEYS.DAILY_CHECKINS);
-  const checkInsData = allCheckIns ? JSON.parse(allCheckIns) : {};
-  checkInsData[date] = checkIns;
-  localStorage.setItem(STORAGE_KEYS.DAILY_CHECKINS, JSON.stringify(checkInsData));
-};
+/** Generates a simple unique ID */
+const generateId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-// Student check-in
-export const studentCheckIn = (studentId, studentName, rollNo, className) => {
-  const today = getTodayDate();
-  const todayCheckIns = getTodayCheckIns();
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  
-  // Check if already checked in today
-  if (todayCheckIns[studentId]?.checkIn) {
-    return { 
-      success: false, 
-      message: 'Already checked in for today',
-      time: todayCheckIns[studentId].checkIn
-    };
+// ── Core Storage ──────────────────────────────────────────────────────────────
+
+/** Returns every attendance record from localStorage */
+export const getAllAttendanceRecords = () => {
+  try {
+    const raw = localStorage.getItem(ATTENDANCE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
   }
-  
-  // Record check-in
-  todayCheckIns[studentId] = {
-    studentName,
-    rollNo,
-    class: className,
-    checkIn: time,
-    checkOut: null
-  };
-  
-  saveDailyCheckIns(today, todayCheckIns);
-  
-  return { success: true, time };
 };
 
-// Student check-out
-export const studentCheckOut = (studentId) => {
+/** Overwrites all attendance records in localStorage */
+const saveAllAttendanceRecords = (records) => {
+  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(records));
+};
+
+/** One-time initialisation — safe to call multiple times */
+export const initializeAttendanceSystem = () => {
+  if (!localStorage.getItem(ATTENDANCE_KEY)) {
+    localStorage.setItem(ATTENDANCE_KEY, JSON.stringify([]));
+  }
+};
+
+// ── Teacher: Mark Attendance ──────────────────────────────────────────────────
+
+/**
+ * Save attendance for a whole class.
+ *
+ * @param {string} className       - e.g. "CS-A"
+ * @param {Object} attendanceMarks - { [studentId]: "Present" | "Absent" }
+ * @param {Object} session         - { date, time, subject }
+ */
+export const markClassAttendance = (className, attendanceMarks, session = {}) => {
+  try {
+    const {
+      date    = getTodayDate(),
+      time    = getCurrentTime(),
+      subject = '',
+    } = session;
+
+    const allRecords = getAllAttendanceRecords();
+
+    Object.entries(attendanceMarks).forEach(([studentId, status]) => {
+      // Check if a record already exists for this student / date / class / subject
+      const existingIndex = allRecords.findIndex(
+        (r) =>
+          r.studentId === studentId &&
+          r.date      === date      &&
+          r.class     === className &&
+          r.subject   === subject
+      );
+
+      const record = {
+        id:        existingIndex >= 0 ? allRecords[existingIndex].id : generateId(),
+        studentId,
+        class:     className,
+        date,
+        time,
+        subject,
+        status,
+        markedAt:  new Date().toISOString(),
+      };
+
+      if (existingIndex >= 0) {
+        // Update existing record
+        allRecords[existingIndex] = record;
+      } else {
+        // Insert new record
+        allRecords.push(record);
+      }
+    });
+
+    saveAllAttendanceRecords(allRecords);
+    return { success: true };
+  } catch (error) {
+    console.error('markClassAttendance error:', error);
+    return { success: false, message: error.message };
+  }
+};
+
+// ── Student: Read Attendance ──────────────────────────────────────────────────
+
+/**
+ * Returns all attendance records for one student, newest first.
+ */
+export const getStudentAttendance = (studentId) => {
+  const all = getAllAttendanceRecords();
+  return all
+    .filter((r) => r.studentId === studentId)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+};
+
+/**
+ * Returns today's attendance record for a student (or null).
+ * Shape: { status, subject, time, date } | null
+ */
+export const getStudentTodayStatus = (studentId) => {
   const today = getTodayDate();
-  const todayCheckIns = getTodayCheckIns();
-  const now = new Date();
-  const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  
-  // Check if checked in
-  if (!todayCheckIns[studentId]?.checkIn) {
-    return { 
-      success: false, 
-      message: 'Must check in first' 
-    };
-  }
-  
-  // Check if already checked out
-  if (todayCheckIns[studentId]?.checkOut) {
-    return { 
-      success: false, 
-      message: 'Already checked out for today',
-      time: todayCheckIns[studentId].checkOut
-    };
-  }
-  
-  // Record check-out
-  todayCheckIns[studentId].checkOut = time;
-  saveDailyCheckIns(today, todayCheckIns);
-  
-  // Also save to permanent attendance records
-  const checkInData = todayCheckIns[studentId];
-  saveAttendanceRecord({
-    studentId,
-    studentName: checkInData.studentName,
-    rollNo: checkInData.rollNo,
-    class: checkInData.class,
-    status: 'Present',
-    checkIn: checkInData.checkIn,
-    checkOut: time,
-    date: today
-  });
-  
-  return { success: true, time };
+  const all   = getAllAttendanceRecords();
+
+  // If multiple subjects were marked today, return the most recent one
+  const todayRecords = all
+    .filter((r) => r.studentId === studentId && r.date === today)
+    .sort((a, b) => (a.markedAt > b.markedAt ? -1 : 1));
+
+  if (todayRecords.length === 0) return null;
+
+  // If any record is "Present", surface that one so the student sees Present
+  const presentRecord = todayRecords.find((r) => r.status === 'Present');
+  return presentRecord || todayRecords[0];
 };
 
-// Save an attendance record
-export const saveAttendanceRecord = (recordData) => {
-  const allRecords = getAllAttendanceRecords();
-  
-  // Check if record already exists for this student on this date
-  const existingIndex = allRecords.findIndex(
-    r => r.studentId === recordData.studentId && r.date === recordData.date
-  );
-  
-  const newRecord = {
-    id: `ATT${Date.now()}`,
-    ...recordData
-  };
-  
-  if (existingIndex >= 0) {
-    // Update existing record
-    allRecords[existingIndex] = { ...allRecords[existingIndex], ...newRecord };
-  } else {
-    // Add new record
-    allRecords.push(newRecord);
-  }
-  
-  localStorage.setItem(STORAGE_KEYS.ATTENDANCE_RECORDS, JSON.stringify(allRecords));
-  return { success: true };
-};
-
-// Teacher marks attendance for multiple students
-export const markClassAttendance = (className, attendanceMarks) => {
-  const today = getTodayDate();
-  const allRecords = getAllAttendanceRecords();
-  
-  // Get all users to fetch student details
-  const usersData = localStorage.getItem(STORAGE_KEYS.USERS);
-  const users = usersData ? JSON.parse(usersData) : { students: [] };
-  const students = users.students.filter(s => s.class === className);
-  
-  const newRecords = [];
-  
-  students.forEach(student => {
-    const status = attendanceMarks[student.id] || 'Absent';
-    
-    // Check if record already exists
-    const existingIndex = allRecords.findIndex(
-      r => r.studentId === student.id && r.date === today
-    );
-    
-    const record = {
-      id: existingIndex >= 0 ? allRecords[existingIndex].id : `ATT${Date.now()}_${student.id}`,
-      studentId: student.id,
-      studentName: student.name,
-      rollNo: student.rollNo,
-      class: student.class,
-      date: today,
-      status: status,
-      checkIn: status === 'Present' ? '09:00 AM' : '-',
-      checkOut: status === 'Present' ? '05:00 PM' : '-'
-    };
-    
-    if (existingIndex >= 0) {
-      allRecords[existingIndex] = record;
-    } else {
-      newRecords.push(record);
-    }
-  });
-  
-  localStorage.setItem(
-    STORAGE_KEYS.ATTENDANCE_RECORDS, 
-    JSON.stringify([...allRecords, ...newRecords])
-  );
-  
-  return { success: true, message: 'Attendance marked successfully' };
-};
-
-// Get attendance statistics for a student
+/**
+ * Returns stats for a student.
+ */
 export const getStudentStats = (studentId) => {
   const records = getStudentAttendance(studentId);
-  const totalDays = records.length;
-  const presentDays = records.filter(r => r.status === 'Present').length;
-  const absentDays = totalDays - presentDays;
-  const percentage = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0;
-  
-  return {
-    totalDays,
-    presentDays,
-    absentDays,
-    percentage
-  };
-};
 
-// Get attendance statistics for a class
-export const getClassStats = (className) => {
-  const today = getTodayDate();
-  const todayRecords = getAllAttendanceRecords().filter(
-    r => r.class === className && r.date === today
-  );
-  
-  const presentCount = todayRecords.filter(r => r.status === 'Present').length;
-  const absentCount = todayRecords.filter(r => r.status === 'Absent').length;
-  
-  return {
-    presentCount,
-    absentCount,
-    totalCount: presentCount + absentCount
-  };
-};
-
-// Get student's check-in status for today
-export const getStudentTodayStatus = (studentId) => {
-  const todayCheckIns = getTodayCheckIns();
-  return todayCheckIns[studentId] || null;
-};
-
-// Export attendance data as CSV-ready format
-export const getAttendanceForExport = (className = null) => {
-  const records = className 
-    ? getClassAttendance(className)
-    : getAllAttendanceRecords();
-  
-  return records;
-};
-
-// Clear old check-in data (optional - for cleanup)
-export const clearOldCheckIns = (daysToKeep = 30) => {
-  const checkIns = localStorage.getItem(STORAGE_KEYS.DAILY_CHECKINS);
-  const allCheckIns = checkIns ? JSON.parse(checkIns) : {};
-  
-  const today = new Date();
-  const cutoffDate = new Date(today.setDate(today.getDate() - daysToKeep));
-  
-  const filteredCheckIns = {};
-  Object.keys(allCheckIns).forEach(date => {
-    if (new Date(date) >= cutoffDate) {
-      filteredCheckIns[date] = allCheckIns[date];
+  // Count unique days (not per-subject)
+  const dayMap = {};
+  records.forEach((r) => {
+    if (!dayMap[r.date] || r.status === 'Present') {
+      dayMap[r.date] = r.status;
     }
   });
-  
-  localStorage.setItem(STORAGE_KEYS.DAILY_CHECKINS, JSON.stringify(filteredCheckIns));
+
+  const days        = Object.values(dayMap);
+  const totalDays   = days.length;
+  const presentDays = days.filter((s) => s === 'Present').length;
+  const absentDays  = totalDays - presentDays;
+  const percentage  = totalDays > 0
+    ? ((presentDays / totalDays) * 100).toFixed(1)
+    : '0.0';
+
+  return { totalDays, presentDays, absentDays, percentage };
 };
 
-// Get all registered students from users storage
+// ── Teacher: Stats & Helpers ──────────────────────────────────────────────────
+
+/**
+ * Returns today's check-in map — kept for backward compat with TeacherDashboard.
+ * Since students no longer self-check-in, this returns an empty object.
+ * Replace with real check-in logic if you re-add that feature.
+ */
+export const getTodayCheckIns = () => {
+  return {};
+};
+
+/**
+ * Returns present/absent counts for a class across all recorded days.
+ */
+export const getClassStats = (className) => {
+  const all          = getAllAttendanceRecords();
+  const classRecords = all.filter((r) => r.class === className);
+  const presentCount = classRecords.filter((r) => r.status === 'Present').length;
+  const absentCount  = classRecords.filter((r) => r.status === 'Absent').length;
+  return { presentCount, absentCount };
+};
+
+/**
+ * Returns all students from localStorage users.
+ * Used by AdminDashboard to list all registered students.
+ */
 export const getAllStudents = () => {
-  const usersData = localStorage.getItem(STORAGE_KEYS.USERS);
-  const users = usersData ? JSON.parse(usersData) : { students: [] };
-  return users.students || [];
+  try {
+    const raw = localStorage.getItem('attendance_app_users');
+    if (!raw) return [];
+    const users = JSON.parse(raw);
+    return users.students || [];
+  } catch {
+    return [];
+  }
 };
 
-// Get students by class
+/**
+ * Returns attendance records formatted for CSV export.
+ * Includes subject and time instead of the old checkIn/checkOut fields.
+ */
+export const getAttendanceForExport = () => {
+  const allRecords = getAllAttendanceRecords();
+
+  // Enrich records with student name and roll number from user storage
+  const students = getAllStudents();
+  const studentMap = {};
+  students.forEach((s) => {
+    studentMap[s.id] = { name: s.name, rollNo: s.rollNo };
+  });
+
+  return allRecords.map((record) => ({
+    date:        record.date        || '',
+    studentName: studentMap[record.studentId]?.name   || record.studentId,
+    rollNo:      studentMap[record.studentId]?.rollNo || '—',
+    class:       record.class       || '',
+    subject:     record.subject     || '—',
+    time:        record.time        || '—',
+    status:      record.status      || '',
+  }));
+};
+
+/**
+ * Stub kept for backward compat — real source is localStorageService.
+ */
 export const getStudentsByClass = (className) => {
-  const allStudents = getAllStudents();
-  return allStudents.filter(s => s.class === className);
-};
-
-// Initialize everything
-export const initializeAttendanceSystem = () => {
-  initializeAttendanceStorage();
-  // Clear check-ins older than 30 days on init
-  clearOldCheckIns(30);
+  try {
+    const raw = localStorage.getItem('attendance_app_users');
+    if (!raw) return [];
+    const users = JSON.parse(raw);
+    return (users.students || []).filter((s) => s.class === className);
+  } catch {
+    return [];
+  }
 };

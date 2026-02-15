@@ -10,73 +10,94 @@ import {
 } from '../utils/attendanceStorageService';
 import { CLASSES } from '../data/testData';
 
-const TeacherDashboard = ({ user, onLogout }) => {
-  const [selectedClass, setSelectedClass] = useState('CS-A');
-  const [attendanceMarks, setAttendanceMarks] = useState({});
-  const [studentsInClass, setStudentsInClass] = useState([]);
-  const [classStats, setClassStats] = useState({ presentCount: 0, absentCount: 0 });
-  const [todayCheckIns, setTodayCheckIns] = useState({});
+// ── Subjects list (move to testData.js and import if preferred) ──────────────
+const SUBJECTS = [
+  'Mathematics',
+  'Physics',
+  'Chemistry',
+  'Computer Science',
+  'English',
+  'Biology',
+];
 
-  // Initialize and load data
+const TeacherDashboard = ({ user, onLogout }) => {
+  const [selectedClass,   setSelectedClass]   = useState('CS-A');
+  const [selectedDate,    setSelectedDate]    = useState(getTodayDate());
+  const [selectedTime,    setSelectedTime]    = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
+  const [selectedSubject, setSelectedSubject] = useState('');
+
+  const [attendanceMarks,  setAttendanceMarks]  = useState({});
+  const [studentsInClass,  setStudentsInClass]  = useState([]);
+  const [classStats,       setClassStats]       = useState({ presentCount: 0, absentCount: 0 });
+  const [todayCheckIns,    setTodayCheckIns]    = useState({});
+  const [saveMessage,      setSaveMessage]      = useState('');
+
+  // ── Load / reload whenever class or date changes ─────────────────────────
   useEffect(() => {
     initializeAttendanceSystem();
     loadClassData();
-  }, [selectedClass]);
+  }, [selectedClass, selectedDate]);
 
   const loadClassData = () => {
-    // Get students from the selected class (including newly registered ones)
     const students = getStudentsByClass(selectedClass);
     setStudentsInClass(students);
-    
-    // Get today's check-ins
+
     const checkIns = getTodayCheckIns();
     setTodayCheckIns(checkIns);
-    
-    // Get today's already saved attendance records
-    const today = getTodayDate();
+
+    const isToday    = selectedDate === getTodayDate();
     const allRecords = getAllAttendanceRecords();
-    const todayRecords = allRecords.filter(r => r.date === today && r.class === selectedClass);
-    
-    // Initialize attendance marks
+    const dateRecords = allRecords.filter(
+      (r) => r.date === selectedDate && r.class === selectedClass
+    );
+
     const initialMarks = {};
-    students.forEach(student => {
-      // First check if attendance was already marked today
-      const existingRecord = todayRecords.find(r => r.studentId === student.id);
-      
+    students.forEach((student) => {
+      const existingRecord = dateRecords.find((r) => r.studentId === student.id);
       if (existingRecord) {
-        // Use the saved attendance status
         initialMarks[student.id] = existingRecord.status;
       } else {
-        // Check if student has checked in today
-        const hasCheckedIn = checkIns[student.id]?.checkIn;
-        initialMarks[student.id] = hasCheckedIn ? 'Present' : 'Absent'; // Default based on check-in
+        // Auto-detect check-in only for today; default Absent for past/future dates
+        const hasCheckedIn = isToday && checkIns[student.id]?.checkIn;
+        initialMarks[student.id] = hasCheckedIn ? 'Present' : 'Absent';
       }
     });
     setAttendanceMarks(initialMarks);
-    
-    // Get class statistics
+
     const stats = getClassStats(selectedClass);
     setClassStats(stats);
   };
 
-  // Calculate counts based on current marks
-  const presentCount = Object.values(attendanceMarks).filter(status => status === 'Present').length;
-  const absentCount = studentsInClass.length - presentCount;
+  // ── Derived counts ────────────────────────────────────────────────────────
+  const presentCount = Object.values(attendanceMarks).filter((s) => s === 'Present').length;
+  const absentCount  = studentsInClass.length - presentCount;
+  const isToday      = selectedDate === getTodayDate();
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleMarkAttendance = (studentId, status) => {
-    setAttendanceMarks(prev => ({
-      ...prev,
-      [studentId]: status
-    }));
+    setAttendanceMarks((prev) => ({ ...prev, [studentId]: status }));
   };
 
   const handleSaveAttendance = () => {
-    const result = markClassAttendance(selectedClass, attendanceMarks);
-    
+    if (!selectedSubject) {
+      alert('Please select a subject before saving.');
+      return;
+    }
+
+    const result = markClassAttendance(selectedClass, attendanceMarks, {
+      date:    selectedDate,
+      time:    selectedTime,
+      subject: selectedSubject,
+    });
+
     if (result.success) {
-      alert('✓ Attendance saved successfully!');
-      // Don't reload - keep the current state
-      // Just update the stats
+      setSaveMessage(
+        `✓ Attendance saved for ${selectedSubject} on ${selectedDate} at ${selectedTime}`
+      );
+      setTimeout(() => setSaveMessage(''), 4000);
       const stats = getClassStats(selectedClass);
       setClassStats(stats);
     } else {
@@ -84,13 +105,31 @@ const TeacherDashboard = ({ user, onLogout }) => {
     }
   };
 
-  const handleClassChange = (newClass) => {
-    setSelectedClass(newClass);
+  // ── Shared input style ────────────────────────────────────────────────────
+  const inputStyle = {
+    width: '100%',
+    padding: '11px 12px',
+    borderRadius: '8px',
+    border: '1px solid #ddd',
+    fontSize: '14px',
+    background: 'white',
+    boxSizing: 'border-box',
+    color: '#212121',
   };
 
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '6px',
+    fontSize: '13px',
+    color: '#666',
+    fontWeight: '600',
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Blue Header */}
+
+      {/* ── Blue Header ─────────────────────────────────────────────────── */}
       <div style={{
         background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
         color: 'white',
@@ -98,9 +137,9 @@ const TeacherDashboard = ({ user, onLogout }) => {
         display: 'flex',
         alignItems: 'center',
         gap: '15px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
       }}>
-        <button 
+        <button
           onClick={onLogout}
           style={{
             background: 'transparent',
@@ -108,268 +147,342 @@ const TeacherDashboard = ({ user, onLogout }) => {
             color: 'white',
             fontSize: '24px',
             cursor: 'pointer',
-            padding: '5px'
+            padding: '5px',
           }}
         >
           ←
         </button>
         <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '500' }}>Teacher Dashboard</h2>
       </div>
-      
-      <div style={{ 
-        maxWidth: '500px', 
-        margin: '0 auto', 
-        padding: '20px'
-      }}>
-        {/* Today's Attendance Summary */}
+
+      <div style={{ maxWidth: '500px', margin: '0 auto', padding: '20px' }}>
+
+        {/* ── Today's Attendance Summary ──────────────────────────────────── */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}>
-          <h3 style={{ 
-            margin: '0 0 15px 0', 
-            fontSize: '16px', 
-            fontWeight: '600',
-            color: '#212121' 
-          }}>
-            Today's Attendance - {selectedClass}
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#212121' }}>
+            {isToday ? "Today's" : selectedDate} Attendance — {selectedClass}
           </h3>
-          
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            marginBottom: '15px' 
-          }}>
-            <div style={{ 
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{
               flex: '1',
-              background: '#4CAF50', 
-              padding: '15px', 
+              background: '#4CAF50',
+              padding: '15px',
               borderRadius: '8px',
               color: 'white',
-              textAlign: 'center'
+              textAlign: 'center',
             }}>
-              <div style={{ fontSize: '12px', marginBottom: '5px', opacity: 0.9 }}>Present:</div>
-              <div style={{ fontSize: '24px', fontWeight: '700' }}>{presentCount}</div>
+              <div style={{ fontSize: '12px', marginBottom: '5px', opacity: 0.9 }}>Present</div>
+              <div style={{ fontSize: '28px', fontWeight: '700' }}>{presentCount}</div>
             </div>
-            
-            <div style={{ 
+
+            <div style={{
               flex: '1',
-              background: '#F44336', 
-              padding: '15px', 
+              background: '#F44336',
+              padding: '15px',
               borderRadius: '8px',
               color: 'white',
-              textAlign: 'center'
+              textAlign: 'center',
             }}>
-              <div style={{ fontSize: '12px', marginBottom: '5px', opacity: 0.9 }}>Absent:</div>
-              <div style={{ fontSize: '24px', fontWeight: '700' }}>{absentCount}</div>
+              <div style={{ fontSize: '12px', marginBottom: '5px', opacity: 0.9 }}>Absent</div>
+              <div style={{ fontSize: '28px', fontWeight: '700' }}>{absentCount}</div>
+            </div>
+
+            <div style={{
+              flex: '1',
+              background: '#1976D2',
+              padding: '15px',
+              borderRadius: '8px',
+              color: 'white',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '12px', marginBottom: '5px', opacity: 0.9 }}>Total</div>
+              <div style={{ fontSize: '28px', fontWeight: '700' }}>{studentsInClass.length}</div>
             </div>
           </div>
-{/* 
-          <button 
-            style={{
-              width: '100%',
-              background: '#1976D2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
+        </div>
+
+        {/* ── Session Details Card ────────────────────────────────────────── */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#212121' }}>
+            🗓️ Session Details
+          </h3>
+
+          {/* Row 1: Date + Time */}
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>📅 Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>🕐 Time</label>
+              <input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Class + Subject */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>🏫 Class</label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                style={inputStyle}
+              >
+                {CLASSES.map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>📚 Subject</label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  border: !selectedSubject ? '1px solid #FFC107' : '1px solid #ddd',
+                }}
+              >
+                <option value="">— Select —</option>
+                {SUBJECTS.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Subject warning hint */}
+          {!selectedSubject && (
+            <p style={{
+              margin: '10px 0 0 0',
+              fontSize: '12px',
+              color: '#E65100',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-            }}
-          >
-            <span style={{ fontSize: '20px' }}>📱</span>
-            Scan QR Code
-          </button> */}
+              gap: '4px',
+            }}>
+              ⚠️ Select a subject to enable saving attendance.
+            </p>
+          )}
         </div>
 
-        {/* Student List */}
+        {/* ── Student List ────────────────────────────────────────────────── */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}>
-          <h3 style={{ 
-            margin: '0 0 15px 0', 
-            fontSize: '16px', 
-            fontWeight: '600',
-            color: '#212121' 
-          }}>
-            Student List ({studentsInClass.length} students)
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', fontWeight: '600', color: '#212121' }}>
+            👥 Student List ({studentsInClass.length} students)
           </h3>
 
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px', 
-              fontSize: '14px',
-              color: '#666',
-              fontWeight: '500'
-            }}>
-              Select Class
-            </label>
-            <select 
-              value={selectedClass} 
-              onChange={(e) => handleClassChange(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                fontSize: '14px',
-                background: 'white'
-              }}
-            >
-              {CLASSES.map(cls => (
-                <option key={cls} value={cls}>{cls}</option>
-              ))}
-            </select>
-          </div>
+          {/* Bulk actions */}
+          {studentsInClass.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              <button
+                onClick={() => {
+                  const all = {};
+                  studentsInClass.forEach((s) => (all[s.id] = 'Present'));
+                  setAttendanceMarks(all);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: '#E8F5E9',
+                  color: '#2E7D32',
+                  border: '1px solid #4CAF50',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                ✓ All Present
+              </button>
+              <button
+                onClick={() => {
+                  const all = {};
+                  studentsInClass.forEach((s) => (all[s.id] = 'Absent'));
+                  setAttendanceMarks(all);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: '#FFEBEE',
+                  color: '#C62828',
+                  border: '1px solid #F44336',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                ✗ All Absent
+              </button>
+            </div>
+          )}
 
-          {/* Student Checkboxes */}
-          <div style={{ marginBottom: '15px' }}>
-            {studentsInClass.length === 0 ? (
-              <div style={{
-                padding: '30px',
-                textAlign: 'center',
-                color: '#757575',
-                fontSize: '14px'
-              }}>
-                No students registered in this class yet.
-              </div>
-            ) : (
-              studentsInClass.map(student => {
-                const hasCheckedIn = todayCheckIns[student.id]?.checkIn;
-                
-                return (
-                  <div 
-                    key={student.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px',
-                      borderBottom: '1px solid #f0f0f0',
-                      cursor: 'pointer',
-                      background: hasCheckedIn ? '#E8F5E9' : 'transparent'
-                    }}
-                    onClick={() => handleMarkAttendance(
-                      student.id, 
-                      attendanceMarks[student.id] === 'Present' ? 'Absent' : 'Present'
-                    )}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={attendanceMarks[student.id] === 'Present'}
-                        onChange={() => {}}
-                        style={{
-                          width: '20px',
-                          height: '20px',
-                          cursor: 'pointer',
-                          accentColor: '#4CAF50'
-                        }}
-                      />
-                      <div>
-                        <span style={{ 
-                          fontSize: '15px', 
-                          fontWeight: '500',
-                          color: '#212121',
-                          display: 'block'
-                        }}>
-                          {student.name}
-                        </span>
-                        <span style={{ 
-                          fontSize: '12px', 
-                          color: '#757575' 
-                        }}>
-                          Roll: {student.rollNo}
-                          {hasCheckedIn && (
-                            <span style={{ 
-                              marginLeft: '8px',
-                              color: '#4CAF50',
-                              fontWeight: '600'
-                            }}>
-                              • Checked in at {todayCheckIns[student.id].checkIn}
-                            </span>
-                          )}
-                        </span>
-                      </div>
+          {/* Student rows */}
+          {studentsInClass.length === 0 ? (
+            <div style={{ padding: '30px', textAlign: 'center', color: '#757575', fontSize: '14px' }}>
+              No students registered in this class yet.
+            </div>
+          ) : (
+            studentsInClass.map((student) => {
+              const hasCheckedIn = isToday && todayCheckIns[student.id]?.checkIn;
+              const isPresent    = attendanceMarks[student.id] === 'Present';
+
+              return (
+                <div
+                  key={student.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    borderBottom: '1px solid #f0f0f0',
+                    cursor: 'pointer',
+                    background: isPresent ? '#F1F8E9' : 'transparent',
+                    borderRadius: '6px',
+                    marginBottom: '2px',
+                    transition: 'background 0.15s',
+                  }}
+                  onClick={() =>
+                    handleMarkAttendance(student.id, isPresent ? 'Absent' : 'Present')
+                  }
+                >
+                  {/* Left: checkbox + name */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isPresent}
+                      onChange={() => {}}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#4CAF50' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '15px', fontWeight: '500', color: '#212121', display: 'block' }}>
+                        {student.name}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#757575' }}>
+                        Roll: {student.rollNo}
+                        {hasCheckedIn && (
+                          <span style={{ marginLeft: '8px', color: '#4CAF50', fontWeight: '600' }}>
+                            • Checked in {todayCheckIns[student.id].checkIn}
+                          </span>
+                        )}
+                      </span>
                     </div>
-
-                    <span style={{ 
-                      padding: '4px 12px', 
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      background: attendanceMarks[student.id] === 'Present' ? '#E8F5E9' : '#FFEBEE',
-                      color: attendanceMarks[student.id] === 'Present' ? '#2E7D32' : '#C62828',
-                      border: attendanceMarks[student.id] === 'Present' ? '1px solid #4CAF50' : '1px solid #F44336'
-                    }}>
-                      {attendanceMarks[student.id] === 'Present' ? '✓ Present' : '✗ Absent'}
-                    </span>
                   </div>
-                );
-              })
-            )}
-          </div>
+
+                  {/* Right: status badge */}
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    background: isPresent ? '#E8F5E9' : '#FFEBEE',
+                    color:      isPresent ? '#2E7D32' : '#C62828',
+                    border:     isPresent ? '1px solid #4CAF50' : '1px solid #F44336',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {isPresent ? '✓ Present' : '✗ Absent'}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
 
-        {/* Mark Attendance Button */}
-        <button 
+        {/* ── Save button ─────────────────────────────────────────────────── */}
+        <button
           onClick={handleSaveAttendance}
-          disabled={studentsInClass.length === 0}
+          disabled={studentsInClass.length === 0 || !selectedSubject}
           style={{
             width: '100%',
-            background: studentsInClass.length === 0 ? '#E0E0E0' : '#FFC107',
-            color: studentsInClass.length === 0 ? '#9E9E9E' : '#000',
+            background:
+              studentsInClass.length === 0 || !selectedSubject ? '#E0E0E0' : '#FFC107',
+            color:
+              studentsInClass.length === 0 || !selectedSubject ? '#9E9E9E' : '#212121',
             border: 'none',
             borderRadius: '8px',
             padding: '16px',
             fontSize: '16px',
             fontWeight: '700',
-            cursor: studentsInClass.length === 0 ? 'not-allowed' : 'pointer',
-            boxShadow: studentsInClass.length === 0 ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+            cursor:
+              studentsInClass.length === 0 || !selectedSubject ? 'not-allowed' : 'pointer',
+            boxShadow:
+              studentsInClass.length === 0 || !selectedSubject
+                ? 'none'
+                : '0 4px 12px rgba(0,0,0,0.15)',
             textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            letterSpacing: '0.5px',
           }}
         >
           💾 Save Attendance
         </button>
 
-        {/* Info Card */}
+        {/* Success message */}
+        {saveMessage && (
+          <div style={{
+            marginTop: '12px',
+            padding: '14px',
+            background: '#E8F5E9',
+            borderRadius: '8px',
+            color: '#2E7D32',
+            fontWeight: '600',
+            fontSize: '14px',
+            textAlign: 'center',
+            border: '1px solid #A5D6A7',
+          }}>
+            {saveMessage}
+          </div>
+        )}
+
+        {/* ── Info card ───────────────────────────────────────────────────── */}
         <div style={{
           marginTop: '20px',
           padding: '15px',
           background: '#E3F2FD',
           borderRadius: '8px',
-          borderLeft: '4px solid #1976D2'
+          borderLeft: '4px solid #1976D2',
         }}>
-          <h4 style={{ 
-            margin: '0 0 8px 0', 
-            fontSize: '14px', 
-            color: '#1565C0',
-            fontWeight: '600'
-          }}>
-            ℹ️ Info:
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#1565C0', fontWeight: '600' }}>
+            ℹ️ How it works
           </h4>
-          <div style={{ fontSize: '12px', color: '#424242', lineHeight: '1.6' }}>
-            • Students with green highlight have checked in today<br />
-            • Click on any student to toggle attendance<br />
-            • New registrations appear automatically<br />
-            • Attendance is saved to local storage
+          <div style={{ fontSize: '12px', color: '#424242', lineHeight: '1.8' }}>
+            • Pick a <strong>date</strong>, <strong>time</strong>, and <strong>subject</strong> before saving<br />
+            • Students shown in <strong>green</strong> checked in today (today only)<br />
+            • Click any student row to toggle Present / Absent<br />
+            • Use <strong>All Present / All Absent</strong> buttons for quick bulk marking<br />
+            • Changing the date auto-loads any previously saved records
           </div>
         </div>
+
       </div>
     </div>
   );
