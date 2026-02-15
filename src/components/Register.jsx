@@ -609,7 +609,6 @@ const Register = ({ onBackToLogin, onRegisterSuccess }) => {
                     }}
                   >
                     <option value="Admin">Admin</option>
-                    <option value="Super Admin">Super Admin</option>
                     <option value="Manager">Manager</option>
                   </select>
                 </div>
