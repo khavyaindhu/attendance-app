@@ -18,6 +18,7 @@ const SUBJECTS = [
   'Computer Science',
   'English',
   'Biology',
+  'other',
 ];
 
 const TeacherDashboard = ({ user, onLogout }) => {
