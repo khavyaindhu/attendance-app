@@ -29,13 +29,13 @@ const TeacherDashboard = ({ user, onLogout }) => {
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
   const [selectedSubject, setSelectedSubject] = useState('');
-
+  const [customSubject, setCustomSubject] = useState('');
   const [attendanceMarks,  setAttendanceMarks]  = useState({});
   const [studentsInClass,  setStudentsInClass]  = useState([]);
   const [classStats,       setClassStats]       = useState({ presentCount: 0, absentCount: 0 });
   const [todayCheckIns,    setTodayCheckIns]    = useState({});
   const [saveMessage,      setSaveMessage]      = useState('');
-
+  
   // ── Load / reload whenever class or date changes ─────────────────────────
   useEffect(() => {
     initializeAttendanceSystem();
@@ -82,29 +82,34 @@ const TeacherDashboard = ({ user, onLogout }) => {
     setAttendanceMarks((prev) => ({ ...prev, [studentId]: status }));
   };
 
-  const handleSaveAttendance = () => {
-    if (!selectedSubject) {
-      alert('Please select a subject before saving.');
-      return;
-    }
+const handleSaveAttendance = () => {
+  const resolvedSubject = selectedSubject === 'other' ? customSubject.trim() : selectedSubject;
 
-    const result = markClassAttendance(selectedClass, attendanceMarks, {
-      date:    selectedDate,
-      time:    selectedTime,
-      subject: selectedSubject,
-    });
+  if (!resolvedSubject) {
+    alert(selectedSubject === 'other'
+      ? 'Please enter a subject name.'
+      : 'Please select a subject before saving.');
+    return;
+  }
 
-    if (result.success) {
-      setSaveMessage(
-        `✓ Attendance saved for ${selectedSubject} on ${selectedDate} at ${selectedTime}`
-      );
-      setTimeout(() => setSaveMessage(''), 4000);
-      const stats = getClassStats(selectedClass);
-      setClassStats(stats);
-    } else {
-      alert('Error saving attendance. Please try again.');
+  const result = markClassAttendance(selectedClass, attendanceMarks, {
+    date:    selectedDate,
+    time:    selectedTime,
+    subject: resolvedSubject,   // ← saves the typed name, not "other"
+  });
+
+  if (result.success) {
+    // Persist the new subject into the SUBJECTS list if it's genuinely new
+    if (selectedSubject === 'other' && !SUBJECTS.includes(resolvedSubject)) {
+      SUBJECTS.splice(SUBJECTS.indexOf('other'), 0, resolvedSubject); // insert before "other"
     }
-  };
+    setSaveMessage(`✓ Attendance saved for ${resolvedSubject} on ${selectedDate} at ${selectedTime}`);
+    setTimeout(() => setSaveMessage(''), 4000);
+    setClassStats(getClassStats(selectedClass));
+  } else {
+    alert('Error saving attendance. Please try again.');
+  }
+};
 
   // ── Shared input style ────────────────────────────────────────────────────
   const inputStyle = {
@@ -256,6 +261,23 @@ const TeacherDashboard = ({ user, onLogout }) => {
                   <option key={cls} value={cls}>{cls}</option>
                 ))}
               </select>
+
+              {selectedSubject === 'other' && (
+                <input
+                  type="text"
+                  placeholder="Type subject name…"
+                  value={customSubject}
+                  onChange={(e) => setCustomSubject(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    marginTop: '8px',
+                    border: !customSubject.trim() ? '1px solid #FFC107' : '1px solid #4CAF50',
+                  }}
+                  autoFocus
+                />
+              )}
+
+
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>📚 Subject</label>
