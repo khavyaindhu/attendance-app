@@ -192,8 +192,108 @@ const AdminDashboard = ({ user, onLogout }) => {
     alert('✓ Attendance data exported successfully!');
   };
 
-  const handleExportPDF = () => alert('PDF export would be implemented with a library like jsPDF.\n\nFor now, please use the Excel export option.');
+const handleExportPDF = () => {
+  const data = getAttendanceForExport();
+  if (data.length === 0) {
+    alert('No attendance data to export');
+    return;
+  }
 
+  Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]).then(([{ default: jsPDF }, { default: autoTable }]) => {
+    const doc = new jsPDF();
+
+    // ── Title & metadata ───────────────────────────────────────────────
+    doc.setFontSize(18);
+    doc.setTextColor(25, 118, 210);
+    doc.text('Attendance Report', 14, 18);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(
+      `Generated on: ${new Date().toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'long', year: 'numeric',
+      })}`,
+      14, 26
+    );
+    doc.text(`Total Records: ${data.length}`, 14, 32);
+
+    // ── Summary counts ─────────────────────────────────────────────────
+    const presentCount = data.filter(r => r.status === 'Present').length;
+    const absentCount  = data.filter(r => r.status === 'Absent').length;
+    const percentage   = data.length > 0
+      ? ((presentCount / data.length) * 100).toFixed(1)
+      : 0;
+
+    doc.setFontSize(10);
+    doc.setTextColor(46, 125, 50);
+    doc.text(`Present: ${presentCount}`, 14, 39);
+    doc.setTextColor(198, 40, 40);
+    doc.text(`Absent: ${absentCount}`, 60, 39);
+    doc.setTextColor(230, 81, 0);
+    doc.text(`Attendance Rate: ${percentage}%`, 106, 39);
+
+    // ── Table ──────────────────────────────────────────────────────────
+    autoTable(doc, {
+      startY: 45,
+      head: [['Date', 'Student Name', 'Roll No', 'Class', 'Subject', 'Check In Time', 'Status']],
+      body: data.map(r => [
+        r.date,
+        r.studentName,
+        r.rollNo  || '—',
+        r.class,
+        r.subject || '—',
+        r.time    || '—',
+        r.status,
+      ]),
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+      },
+      headStyles: {
+        fillColor: [25, 118, 210],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        textColor: 60,
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+      didParseCell: (hookData) => {
+        if (hookData.section === 'body' && hookData.column.index === 6) {
+          const val = hookData.cell.raw;
+          hookData.cell.styles.textColor = val === 'Present' ? [46, 125, 50] : [198, 40, 40];
+          hookData.cell.styles.fontStyle = 'bold';
+        }
+      },
+    });
+
+    // ── Page footers ───────────────────────────────────────────────────
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${i} of ${pageCount}  |  Attendance Management System`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 8,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`attendance_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    alert('✓ PDF exported successfully!');
+
+  }).catch((err) => {
+    console.error(err);
+    alert('❌ Failed to generate PDF. Please run:\nnpm install jspdf jspdf-autotable');
+  });
+};
   // ── Modal openers ─────────────────────────────────────────────────────────
   const handleManageStudents = () => { setModalData(getAllStudents()); setModalType('students'); };
 
